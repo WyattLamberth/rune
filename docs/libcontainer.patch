@@ -1,0 +1,440 @@
+--- a/crates/libcontainer/Cargo.toml
++++ b/crates/libcontainer/Cargo.toml
+@@ -173,3 +173,10 @@
+ 
+ [dev-dependencies.tempfile]
+ version = "3"
++
++[dependencies.rustix]
++version = "1"
++features = ["fs", "process"]
++
++[dependencies.tempfile]
++version = "3"
+--- a/crates/libcontainer/src/rootfs/mount.rs
++++ b/crates/libcontainer/src/rootfs/mount.rs
+@@ -486,15 +486,12 @@
+             .build()?;
+         tracing::debug!("{:?}", cgroup_mount);
+ 
+-        if self
+-            .mount_into_container(
+-                &cgroup_mount,
+-                options.root,
+-                mount_option_config,
+-                options.label,
+-            )
+-            .is_err()
+-        {
++        if let Err(error) = self.mount_into_container(
++            &cgroup_mount, options.root, mount_option_config, options.label,
++        ) {
++            if options.cgroup_ns {
++                return Err(error);
++            }
+             let host_mount = libcgroups::v2::util::get_unified_mount_point().map_err(|err| {
+                 tracing::error!("failed to get unified mount point: {}", err);
+                 MountError::Other(err.into())
+@@ -575,14 +572,9 @@
+         let typ = m.typ().as_deref();
+         let mut data_options = mount_option_config.data.clone();
+ 
+-        if let Some(l) = label {
+-            if typ != Some("proc") && typ != Some("sysfs") {
+-                if Path::new("/sys/fs/selinux").exists() {
+-                    data_options.push(format!("context={}", l));
+-                } else {
+-                    tracing::debug!("ignoring mount label because SELinux is disabled");
+-                }
+-            }
++        let label_mode = super::selinux::label_mode(typ, label, Path::new("/sys/fs/selinux").exists());
++        if let super::selinux::LabelMode::Mount(l) = label_mode {
++            data_options.push(format!("context={}", l));
+         }
+ 
+         let root = Root::open(rootfs)?;
+@@ -802,6 +794,14 @@
+             }
+         }
+ 
++        // mqueue rejects SELinux context= mount options. Label the mounted
++        // inode instead, matching crun's LABEL_XATTR handling. Fail closed
++        // if a requested label cannot be applied.
++        if let super::selinux::LabelMode::Xattr(l) = label_mode {
++            let mounted = root.resolve(container_dest)?.reopen(OpenFlags::O_RDONLY | OpenFlags::O_CLOEXEC)?;
++            rustix::fs::fsetxattr(&mounted, "security.selinux", l.as_bytes(), rustix::fs::XattrFlags::empty())
++                .map_err(|err| MountError::Io(err.into()))?;
++        }
+         Ok(())
+     }
+ 
+--- a/crates/libcontainer/src/rootfs/mod.rs
++++ b/crates/libcontainer/src/rootfs/mod.rs
+@@ -32,3 +32,5 @@
+ }
+ 
+ type Result<T> = std::result::Result<T, RootfsError>;
++
++mod selinux;
+--- a/crates/libcontainer/src/rootfs/selinux.rs
++++ b/crates/libcontainer/src/rootfs/selinux.rs
+@@ -0,0 +1,57 @@
++// rune patch to libcontainer 0.7.0; covered by the upstream Apache-2.0 license.
++#[derive(Clone, Copy, Debug, PartialEq, Eq)]
++pub enum LabelMode<'a> {
++    None,
++    Mount(&'a str),
++    Xattr(&'a str),
++}
++
++pub fn label_mode<'a>(typ: Option<&str>, label: Option<&'a str>, enabled: bool) -> LabelMode<'a> {
++    let Some(label) = label.filter(|label| !label.is_empty()) else {
++        return LabelMode::None;
++    };
++    if !enabled {
++        return LabelMode::None;
++    }
++    match typ {
++        Some("proc" | "sysfs" | "cgroup" | "cgroup2") => LabelMode::None,
++        Some("mqueue") => LabelMode::Xattr(label),
++        _ => LabelMode::Mount(label),
++    }
++}
++#[cfg(test)]
++mod tests {
++    use super::*;
++    #[test]
++    fn mqueue_uses_inode_label_while_tmpfs_keeps_mount_label() {
++        assert_eq!(
++            label_mode(Some("mqueue"), Some("label"), true),
++            LabelMode::Xattr("label")
++        );
++        assert_eq!(
++            label_mode(Some("tmpfs"), Some("label"), true),
++            LabelMode::Mount("label")
++        );
++        assert_eq!(
++            label_mode(Some("cgroup2"), Some("label"), true),
++            LabelMode::None
++        );
++        assert_eq!(
++            label_mode(Some("proc"), Some("label"), true),
++            LabelMode::None
++        );
++        assert_eq!(
++            label_mode(Some("sysfs"), Some("label"), true),
++            LabelMode::None
++        );
++    }
++    #[test]
++    fn absent_empty_or_disabled_labels_add_no_mount_option() {
++        assert_eq!(label_mode(Some("mqueue"), None, true), LabelMode::None);
++        assert_eq!(label_mode(Some("tmpfs"), Some(""), true), LabelMode::None);
++        assert_eq!(
++            label_mode(Some("tmpfs"), Some("label"), false),
++            LabelMode::None
++        );
++    }
++}
+--- a/crates/libcontainer/src/process/init/process.rs
++++ b/crates/libcontainer/src/process/init/process.rs
+@@ -185,6 +185,15 @@
+             tracing::error!(?err, "failed to apply apparmor profile");
+             InitProcessError::AppArmor(err)
+         })?;
++    }
++
++    // rune patch: honor the OCI SELinux process label before reporting ready.
++    // A failed label setup must fail creation instead of executing unconfined.
++    if let Some(label) = ctx.process.selinux_label().as_deref().filter(|label| !label.is_empty()) {
++        let procfs = ProcfsHandle::new()?;
++        let mut attr = procfs.open(ProcfsBase::ProcSelf, "attr/selinux/exec", OpenFlags::O_WRONLY | OpenFlags::O_CLOEXEC)
++            .or_else(|_| procfs.open(ProcfsBase::ProcSelf, "attr/exec", OpenFlags::O_WRONLY | OpenFlags::O_CLOEXEC))?;
++        attr.write_all(label.as_bytes()).map_err(InitProcessError::Io)?;
+     }
+ 
+     if let Some(umask) = ctx.process.user().umask() {
+--- a/crates/libcontainer/src/container/state.rs
++++ b/crates/libcontainer/src/container/state.rs
+@@ -1,7 +1,6 @@
+ //! Information about status and state of the container
+ use std::collections::HashMap;
+ use std::fmt::Display;
+-use std::fs;
+ use std::fs::File;
+ use std::io::{BufReader, BufWriter, Write};
+ use std::path::{Path, PathBuf};
+@@ -106,6 +105,8 @@
+     // Pid is the process ID for the container process.
+     #[serde(skip_serializing_if = "Option::is_none")]
+     pub pid: Option<i32>,
++    #[serde(default, skip_serializing_if = "Option::is_none")]
++    pub rune_pid_starttime: Option<u64>,
+     // Bundle is the path to the container's bundle directory.
+     pub bundle: PathBuf,
+     // Annotations are key values associated with the container.
+@@ -148,6 +149,7 @@
+             id: container_id.to_string(),
+             status,
+             pid,
++            rune_pid_starttime: pid.and_then(|pid| procfs::process::Process::new(pid).ok()?.stat().ok().map(|s| s.starttime)),
+             bundle,
+             annotations: Some(HashMap::default()),
+             created: None,
+@@ -162,24 +164,9 @@
+     #[instrument(level = "trace")]
+     pub fn save(&self, container_root: &Path) -> Result<()> {
+         let state_file_path = Self::file_path(container_root);
+-        let file = fs::OpenOptions::new()
+-            .read(true)
+-            .write(true)
+-            .append(false)
+-            .create(true)
+-            .truncate(true)
+-            .open(&state_file_path)
+-            .map_err(|err| {
+-                tracing::error!(
+-                    state_file_path = ?state_file_path,
+-                    err = %err,
+-                    "failed to open container state file",
+-                );
+-                StateError::OpenStateFile {
+-                    state_file_path: state_file_path.to_owned(),
+-                    source: err,
+-                }
+-            })?;
++        let file = tempfile::NamedTempFile::new_in(container_root).map_err(|err| StateError::OpenStateFile {
++            state_file_path: state_file_path.clone(), source: err,
++        })?;
+         let mut writer = BufWriter::new(file);
+         serde_json::to_writer(&mut writer, self).map_err(|err| {
+             tracing::error!(
+@@ -204,6 +191,18 @@
+             }
+         })?;
+ 
++        let file = writer.into_inner().map_err(|err| StateError::WriteStateFile {
++            state_file_path: state_file_path.clone(), source: err.into_error(),
++        })?;
++        file.as_file().sync_all().map_err(|err| StateError::WriteStateFile {
++            state_file_path: state_file_path.clone(), source: err,
++        })?;
++        file.persist(&state_file_path).map_err(|err| StateError::WriteStateFile {
++            state_file_path: state_file_path.clone(), source: err.error,
++        })?;
++        File::open(container_root).and_then(|file| file.sync_all()).map_err(|err| StateError::WriteStateFile {
++            state_file_path, source: err,
++        })?;
+         Ok(())
+     }
+ 
+--- a/crates/libcontainer/src/container/container.rs
++++ b/crates/libcontainer/src/container/container.rs
+@@ -97,6 +97,7 @@
+ 
+     pub fn set_pid(&mut self, pid: i32) -> &mut Self {
+         self.state.pid = Some(pid);
++        self.state.rune_pid_starttime = Process::new(pid).ok().and_then(|p| p.stat().ok()).map(|s| s.starttime);
+         self
+     }
+ 
+@@ -182,7 +183,13 @@
+                 if let Ok(proc) = Process::new(pid.as_raw()) {
+                     use procfs::process::ProcState;
+ 
+-                    match proc.stat()?.state()? {
++                    let stat = proc.stat()?;
++                    if self.state.rune_pid_starttime != Some(stat.starttime) {
++                        self.state.pid = None;
++                        self.set_status(ContainerStatus::Stopped);
++                        return Ok(());
++                    }
++                    match stat.state()? {
+                         ProcState::Zombie | ProcState::Dead => ContainerStatus::Stopped,
+                         _ => match self.status() {
+                             ContainerStatus::Creating
+--- a/crates/libcontainer/src/container/container_kill.rs
++++ b/crates/libcontainer/src/container/container_kill.rs
+@@ -65,7 +65,19 @@
+ 
+         tracing::debug!("kill signal {} to {}", signal, pid);
+ 
+-        match signal::kill(pid, signal) {
++        let rustix_pid = rustix::process::Pid::from_raw(pid.as_raw()).ok_or_else(|| LibcontainerError::Other("invalid process ID".into()))?;
++        let fd = match rustix::process::pidfd_open(rustix_pid, rustix::process::PidfdFlags::empty()) {
++            Ok(fd) => fd,
++            Err(rustix::io::Errno::SRCH) => return Ok(()),
++            Err(err) => return Err(LibcontainerError::OtherIO(err.into())),
++        };
++        let observed = procfs::process::Process::new(pid.as_raw()).ok().and_then(|p| p.stat().ok()).map(|s| s.starttime);
++        if observed.is_none() { return Ok(()); }
++        if observed != self.state.rune_pid_starttime {
++            return Err(LibcontainerError::Other("process identity changed; refusing to signal".into()));
++        }
++        let rustix_signal = rustix::process::Signal::from_named_raw(signal as i32).ok_or_else(|| LibcontainerError::Other("unsupported signal".into()))?;
++        match rustix::process::pidfd_send_signal(&fd, rustix_signal).map_err(|err| nix::errno::Errno::from_raw(err.raw_os_error())) {
+             Ok(_) => {}
+             Err(nix::errno::Errno::ESRCH) => {
+                 // the process does not exist, which is what we want
+@@ -118,7 +130,16 @@
+         pids.iter()
+             .try_for_each(|&pid| {
+                 tracing::debug!("kill signal {} to {}", signal, pid);
+-                let res = signal::kill(pid, signal);
++                let rustix_pid = rustix::process::Pid::from_raw(pid.as_raw()).ok_or(nix::errno::Errno::EINVAL)?;
++                let res = match rustix::process::pidfd_open(rustix_pid, rustix::process::PidfdFlags::empty()) {
++                    Ok(fd) => {
++                        // Recheck membership after acquiring the stable process handle.
++                        if !cmanager.get_all_pids().map_err(|_| nix::errno::Errno::EIO)?.contains(&pid) { return Ok(()); }
++                        let signal = rustix::process::Signal::from_named_raw(signal as i32).ok_or(nix::errno::Errno::EINVAL)?;
++                        rustix::process::pidfd_send_signal(fd, signal).map_err(|err| nix::errno::Errno::from_raw(err.raw_os_error()))
++                    }
++                    Err(err) => Err(nix::errno::Errno::from_raw(err.raw_os_error())),
++                };
+                 match res {
+                     Err(nix::errno::Errno::ESRCH) => {
+                         // the process does not exist, which is what we want
+--- a/crates/libcontainer/src/container/builder_impl.rs
++++ b/crates/libcontainer/src/container/builder_impl.rs
+@@ -209,7 +209,8 @@
+             }
+         }
+ 
+-        if let Some(container) = &mut self.container {
++        if matches!(self.container_type, ContainerType::InitContainer)
++            && let Some(container) = &mut self.container {
+             // update status and pid of the container process
+             container
+                 .set_status(ContainerStatus::Created)
+--- a/crates/libcontainer/src/container/init_builder.rs
++++ b/crates/libcontainer/src/container/init_builder.rs
+@@ -25,6 +25,7 @@
+     detached: bool,
+     no_pivot: bool,
+     as_sibling: bool,
++    rune_spec: Option<Spec>,
+ }
+ 
+ impl InitContainerBuilder {
+@@ -38,6 +39,7 @@
+             detached: true,
+             no_pivot: false,
+             as_sibling: false,
++            rune_spec: None,
+         }
+     }
+ 
+@@ -69,6 +71,12 @@
+     /// Replaces the bundle set by [`ContainerBuilder::as_init`].  
+     pub fn with_bundle<P: Into<PathBuf>>(mut self, bundle: P) -> Self {
+         self.bundle = bundle.into();
++        self
++    }
++
++    /// Use a caller-validated configuration snapshot without rereading the bundle.
++    pub fn with_spec(mut self, spec: Spec) -> Self {
++        self.rune_spec = Some(spec);
+         self
+     }
+ 
+@@ -85,6 +93,8 @@
+         container
+             .set_systemd(self.use_systemd)
+             .set_annotations(spec.annotations().clone());
++        container.state.oci_version = spec.version().clone();
++        spec.save(container_dir.join("rune-config.json"))?;
+ 
+         let notify_path = container_dir.join(NOTIFY_FILE);
+         // convert path of root file system of the container to absolute path
+@@ -165,7 +175,10 @@
+ 
+     fn load_spec(&self) -> Result<Spec, LibcontainerError> {
+         let source_spec_path = self.bundle.join("config.json");
+-        let mut spec = Spec::load(source_spec_path)?;
++        let mut spec = match &self.rune_spec {
++            Some(spec) => spec.clone(),
++            None => Spec::load(source_spec_path)?,
++        };
+         Self::validate_spec(&spec)?;
+ 
+         spec.canonicalize_rootfs(&self.bundle).map_err(|err| {
+--- a/crates/libcontainer/src/container/tenant_builder.rs
++++ b/crates/libcontainer/src/container/tenant_builder.rs
+@@ -54,6 +54,7 @@
+     ignore_paused: bool,
+     sub_cgroup: Option<String>,
+     process_label: Option<String>,
++    rune_process: Option<Process>,
+     apparmor: Option<String>,
+ }
+ 
+@@ -153,6 +154,7 @@
+             ignore_paused: false,
+             sub_cgroup: None,
+             process_label: None,
++            rune_process: None,
+             apparmor: None,
+         }
+     }
+@@ -224,6 +226,11 @@
+ 
+     pub fn with_sub_cgroup(mut self, sub_cgroup: Option<String>) -> Self {
+         self.sub_cgroup = sub_cgroup;
++        self
++    }
++
++    pub fn with_process_snapshot(mut self, process: Option<Process>) -> Self {
++        self.rune_process = process;
+         self
+     }
+ 
+@@ -276,7 +283,7 @@
+             rootfs,
+             user_ns_config,
+             notify_path: notify_path.clone(),
+-            container: None,
++            container: Some(container.clone()),
+             preserve_fds: self.base.preserve_fds,
+             detached: self.detached,
+             executor: self.base.executor,
+@@ -334,7 +341,7 @@
+     }
+ 
+     fn load_init_spec(&self, container: &Container) -> Result<Spec, LibcontainerError> {
+-        let spec_path = container.bundle().join("config.json");
++        let spec_path = container.root.join("rune-config.json");
+ 
+         let mut spec = Spec::load(&spec_path).map_err(|err| {
+             tracing::error!(path = ?spec_path, ?err, "failed to load spec");
+@@ -391,7 +398,9 @@
+         spec: &mut Spec,
+         container: &Container,
+     ) -> Result<(), LibcontainerError> {
+-        let process = if let Some(process) = &self.process {
++        let mut process = if let Some(process) = &self.rune_process {
++            process.clone()
++        } else if let Some(process) = &self.process {
+             self.get_process(process)?
+         } else {
+             // Use the spec's process env as the baseline for exec.
+@@ -443,6 +452,10 @@
+             process_builder.build()?
+         };
+ 
++        let label = self.process_label.clone().or_else(|| process.selinux_label().clone())
++            .or_else(|| spec.process().as_ref().and_then(|p| p.selinux_label().clone()));
++        process.set_selinux_label(label);
++
+         let container_pid = container.pid().ok_or(LibcontainerError::Other(
+             "could not retrieve container init pid".into(),
+         ))?;
+@@ -470,6 +483,9 @@
+             linux_builder = linux_builder.time_offsets(time_offsets.clone());
+         }
+ 
++        if let Some(seccomp) = spec_linux.seccomp() {
++            linux_builder = linux_builder.seccomp(seccomp.clone());
++        }
+         let linux = linux_builder.build()?;
+         spec.set_process(Some(process)).set_linux(Some(linux));
+ 

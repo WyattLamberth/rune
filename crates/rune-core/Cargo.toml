@@ -1,0 +1,8 @@
+[package]
+name = "rune-core"
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[lints]
+workspace = true
