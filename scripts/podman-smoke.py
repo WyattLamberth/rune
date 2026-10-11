@@ -38,7 +38,9 @@ def main():
         print('PASS cgroup namespace and memory/PID limits', flush=True)
         caps = call(common+['--cap-drop', 'all', args.image, 'sh', '-c', 'grep CapEff: /proc/self/status'])
         assert int(caps.split()[1], 16) == 0, caps
-        print('PASS dropped capabilities', flush=True)
+        nnp = call(common+['--security-opt', 'no-new-privileges', args.image, 'sh', '-c', 'grep NoNewPrivs: /proc/self/status'])
+        assert int(nnp.split()[1]) == 1, nnp
+        print('PASS dropped capabilities and no-new-privileges', flush=True)
         cid = call(['create', '--network', 'none', args.image, 'sleep', '120'])
         try:
             call(['start', cid])

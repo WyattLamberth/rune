@@ -19,6 +19,7 @@ Local changes:
 - Feed validated spec/process snapshots directly to the builders and persist
   the full create configuration for subsequent exec rather than rereading bundles.
 - Store process start time, refuse stale identities, and signal with pidfds.
+- Propagate failures to apply requested no-new-privileges settings.
 - Commit state through a synchronized temporary file and atomic rename.
 
 These are local patches, not changes accepted by upstream. The minimal source

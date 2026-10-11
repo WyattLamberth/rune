@@ -16,7 +16,8 @@ See [adapter provenance and patches](vendor/README.md).
 
 Rootless Podman integration is the first target. Tested locally with Podman 5.8.7
 on Linux x86_64 and cgroup v2: run, nonzero exits, memory/PID limits, SELinux,
-seccomp, exec, TTY, pause/resume, kill and cleanup. Broader rootful, network,
+seccomp, no-new-privileges, exec, TTY, pause/resume, kill, default networking
+and cleanup. Broader rootful, network,
 volume, architecture and OCI conformance coverage remains open.
 
 ## Build and try with Podman
@@ -64,6 +65,6 @@ Intel RDT, `--no-new-keyring`, direct `exec --tty` without a process file, and
 `--ignore-paused` are rejected. Full feature negotiation, standalone run/spec,
 reproducible performance baselines, telemetry, and release artifacts remain backlog work.
 
-[Architecture](docs/architecture.md) · [security boundary](SECURITY.md) ·
+[OCI support matrix](docs/oci-support.md) · [Architecture](docs/architecture.md) · [security boundary](SECURITY.md) ·
 [GitHub backlog](https://github.com/WyattLamberth/rune/issues) ·
 [Linear delivery](https://linear.app/rmux/project/rune-4971526b84f3)

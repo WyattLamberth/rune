@@ -53,7 +53,7 @@ pub fn process(path: &Path) -> Result<Process> {
     Ok(process)
 }
 pub fn bundle(path: &Path) -> Result<Spec> {
-    let spec: Spec = read_json(&path.join("config.json"))?;
+    let mut spec: Spec = read_json(&path.join("config.json"))?;
     let version = spec.version();
     if !matches!(
         version.as_str(),
@@ -82,6 +82,14 @@ pub fn bundle(path: &Path) -> Result<Spec> {
     {
         bail!("Intel RDT is not supported by rune's current cleanup contract");
     }
+    spec.canonicalize_rootfs(path)?;
+    if !spec
+        .root()
+        .as_ref()
+        .is_some_and(|root| root.path().is_dir())
+    {
+        bail!("root filesystem must be a directory");
+    }
     Ok(spec)
 }
 
@@ -91,6 +99,7 @@ mod tests {
     #[test]
     fn validates_unknown_fields_versions_and_nul() -> Result<()> {
         let dir = tempfile::tempdir()?;
+        std::fs::create_dir(dir.path().join("rootfs"))?;
         let mut spec = serde_json::to_value(Spec::default())?;
         spec["ociVersion"] = serde_json::json!("1.2.1");
         spec["process"]["args"] = serde_json::json!(["/bin/sh"]);
@@ -126,12 +135,14 @@ mod tests {
     #[test]
     fn snapshot_is_unchanged_when_bundle_is_rewritten() -> Result<()> {
         let dir = tempfile::tempdir()?;
+        std::fs::create_dir(dir.path().join("rootfs"))?;
         let mut spec = Spec::default();
         spec.set_version("1.2.1".to_owned());
         spec.save(dir.path().join("config.json"))?;
         let frozen = bundle(dir.path())?;
         std::fs::write(dir.path().join("config.json"), b"{}")?;
         assert!(bundle(dir.path()).is_err());
+        spec.canonicalize_rootfs(dir.path())?;
         assert_eq!(frozen, spec);
         Ok(())
     }

@@ -76,7 +76,7 @@ pub fn container_init_process(
     apply_rest_namespaces(&ctx.ns, ctx.spec, ctx.syscall.as_ref())?;
 
     if let Some(true) = ctx.process.no_new_privileges() {
-        let _ = prctl::set_no_new_privileges(true);
+        prctl::set_no_new_privileges(true).map_err(|err| InitProcessError::NixOther(nix::errno::Errno::from_raw(err)))?;
     }
 
     if matches!(args.container_type, ContainerType::InitContainer) {

@@ -76,7 +76,7 @@
  type Result<T> = std::result::Result<T, RootfsError>;
 +
 +mod selinux;
---- a/crates/libcontainer/src/rootfs/selinux.rs
+--- /dev/null
 +++ b/crates/libcontainer/src/rootfs/selinux.rs
 @@ -0,0 +1,57 @@
 +// rune patch to libcontainer 0.7.0; covered by the upstream Apache-2.0 license.
@@ -138,6 +138,15 @@
 +}
 --- a/crates/libcontainer/src/process/init/process.rs
 +++ b/crates/libcontainer/src/process/init/process.rs
+@@ -76,7 +76,7 @@
+     apply_rest_namespaces(&ctx.ns, ctx.spec, ctx.syscall.as_ref())?;
+ 
+     if let Some(true) = ctx.process.no_new_privileges() {
+-        let _ = prctl::set_no_new_privileges(true);
++        prctl::set_no_new_privileges(true).map_err(|err| InitProcessError::NixOther(nix::errno::Errno::from_raw(err)))?;
+     }
+ 
+     if matches!(args.container_type, ContainerType::InitContainer) {
 @@ -185,6 +185,15 @@
              tracing::error!(?err, "failed to apply apparmor profile");
              InitProcessError::AppArmor(err)
