@@ -400,3 +400,38 @@ inspected history, production helper bounds, cleanup preservation and delivery
 context. Exact aggregate evidence and continuation obligations are recorded in
 `docs/parity/validation/2026-10-13-smoke-output-bounds.md`. The branch is isolated
 from the other active rune chat; ongoing ownership selection is pending.
+
+## 2026-10-13 — Reject nonregular OCI JSON before blocking reads (#27)
+
+Evidence: inspected the original alpha File::open-based validation, subsequent
+snapshot/NUMA commits, cleanup metadata's safe-open decision, #2/#14 and pinned
+runc spec.go loadSpec. A private standalone writerless config.json FIFO fixture
+at exact rune `dd06f7dc5f5d33a448f2b9e622cb8499edba21a5` and signed runc v1.5.2
+hits its 500 ms deadline before parsing, without acquiring container records.
+Rune holds the per-container command lock during that open. Supplied process
+and stored exec configuration share the same vulnerable reader.
+
+Decision: open nonblocking and inspect the descriptor's file type before reading
+at most the existing 4 MiB plus sentinel. Reject nonregular JSON inputs explicitly.
+Regular-file symlinks remain supported; descriptor inspection avoids a separate
+path-metadata/open race. No unsafe, dependency, lockfile or deterministic-core
+changes. This does not guarantee bounded latency for arbitrary remote filesystems
+or change the snapshot's existing concurrent-write contract.
+
+Compatibility conflict: pinned runc's ordinary os.Open accepts streamed FIFO
+configuration and can wait indefinitely. Rejecting nonregular inputs is a known
+policy difference, not runc parity. A compliant bounded streaming design remains
+unresolved; a silent indefinite read violates rune's bounded-input requirement.
+Do not mark this input contract verified for complete parity. Alternatives:
+path metadata before open is racy; byte limits alone cannot bound open; supporting
+unlimited writer waits preserves the defect. Rejecting all symlinks adds an
+unnecessary compatibility difference, so inspect the opened regular file instead.
+
+Production CLI regressions have a two-second kill/reap deadline and exercise
+bundle, stored exec and supplied process FIFOs. Rejection creates no container
+records, retains existing state bytes, and leaves an existing owned process alive.
+A reader test rejects directories/devices and accepts regular-file symlinks in
+all three paths. The standalone differential records artifact/source/fixture
+hashes and the known FIFO timeout difference without logs or private paths.
+Development: 31 Rust tests and warnings-denied Clippy pass. Exact committed
+validation, isolated kernel regressions and a versioned compatibility record follow.
