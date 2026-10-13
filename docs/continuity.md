@@ -2,17 +2,29 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — bounded NUMA preflight
+## Current increment — smoke cleanup evidence
 
-GitHub #23 / RMU-35, branch `codex/23-numa-bounds`, stacked on PR #24.
-Implementation `ce207b9df26a2e8f3d8ff8bbed8eb738505bc425` bounds node IDs/text,
-merges intervals before expansion, and validates create/stored exec policy before
-acquisition. 29 tests, all Rust gates, label tests, NUMA preflight differential,
-failed-create and general Podman suites pass. Five focused groups match pinned
-runc. Exact evidence: `docs/parity/validation/2026-10-12-numa-bounds.md`.
-Four memoryPolicy source entries now link partial evidence; zero entries fully
-verified. Finish final checks and publication, then repair general-smoke cleanup
-error preservation/diagnostics under #17 and review safe train integration.
+GitHub #17 / RMU-33, branch `codex/17-smoke-cleanup-evidence`, stacked on PR #25.
+Corrected implementation `7a609bc99bae0da2c8be0d89a5d55b5cc98289e8` shares
+bounded anchored diagnostics, failure preservation and private recovery across
+all four suites. 29 Rust and 8 control/filesystem tests plus static gates pass.
+Exec/NUMA comparisons and failed-create kernel suite pass; broader Podman
+comparison retains one runc runtime record and fails. Native recovery reports
+stopped, forced deletion succeeds and all owned resources/locators are cleaned.
+Exact evidence: `docs/parity/validation/2026-10-13-cleanup-harness.md`.
+An earlier exact harness revision used shortened ps IDs; it is a harness defect,
+not runtime evidence. Finish final checks/publication, then trace delete request
+results under pinned Podman 5.8.7 source `c593b672bf3db1173aebea565ebf1a724ea196dc`.
+Its frontend can log removal errors and still return expected workload status and
+remove registry records; this source finding is not the full root cause.
+
+## Prior increment — bounded NUMA preflight
+
+PR #25 / #23 / RMU-35, implementation
+`ce207b9df26a2e8f3d8ff8bbed8eb738505bc425`, final
+`3d3e377a7b89033b944a453eca6ae4780db4fe71`. Local and hosted Rust/Nix pass.
+29 tests and five focused kernel differential groups pass. Four memoryPolicy
+entries link partial evidence; none is fully verified.
 
 ## Prior increment — NUMA exec policy
 
@@ -67,8 +79,8 @@ GitHub #17 / RMU-33 owns the cleanup investigation and backend config-load audit
 Signed upstream runc v1.5.2 amd64 reference assets have been downloaded into
 ignored `work/reference-runc/`. SHA-256 matches the release checksum, and detached
 signature verifies against the keyring in the pinned source using a private local
-GPG home; system trust settings were not modified. These research inputs still
-need durable runner/build provenance and differential case evidence under #13.
+GPG home; system trust settings were not modified. The signed-reference runner and narrow evidence are committed under #13;
+source-build reproduction and full conformance remain open.
 
 ## Prior increment — baseline
 
@@ -82,23 +94,22 @@ implementation commit. Inspect Git for the current head rather than treating
 the implementation SHA as the final delivered revision.
 
 The inventory has 2,093 entries, zero verified semantic entries, and explicit
-limits. It is a floor for an exhaustive semantic parity matrix. All runtime
-source remains the alpha. GitHub #12–#14 and Linear RMU-29–RMU-31 own CLI gaps,
+limits. It is a floor for an exhaustive semantic parity matrix. At that baseline, runtime
+source remained the alpha. GitHub #12–#14 and Linear RMU-29–RMU-31 own CLI gaps,
 validation tooling and isolation field audit. The Verified runc parity milestone
 is open. Existing issues #1–#9 remain open because their broader acceptance
 criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach bounded NUMA PR after final checks; reconcile RMU-35.
-2. Repair general smoke cleanup errors and aggregate failure diagnostics under
-   #17; continue interrupted/resource failure/concurrent cleanup evidence.
-3. Review and integrate the coherent validated PR train under the delegated
-   mandate, preserving commit decisions and exact delivered-revision validation.
-4. Continue recognized OCI field audit #14 and differential/conformance #13;
-   expand source inventory into exhaustive semantic cases/configuration matrix.
+1. Finish final checks and publish/attach cleanup harness PR; update RMU-33.
+2. Add bounded native runtime request/result tracing for disposable Podman cases.
+   Explain retained OCI state before changing cleanup assertions or claiming a fix.
+3. Continue interrupted/resource-failure/concurrent cleanup acceptance under #17,
+   recognized-field audit #14 and full differential/conformance matrix #13.
+4. Review coherent train integration with exact delivered-revision validation;
+   broad cleanup acceptance remains unresolved.
 
-PR train: alpha #10, baseline #15, exec #18, differential #19, cleanup #20,
-rollback #21, NUMA #24. All prior hosted Rust/Nix checks pass. No parity claim.
-Read current Git/PR/Linear state before repeating completed work. Private research
-inputs, source archive builds, reference assets and diagnostics remain ignored.
+PR train: #10, #15, #18, #19, #20, #21, #24, #25. Prior hosted Rust/Nix pass.
+The goal remains active and complete parity remains unproven. Check Git/PR/Linear
+and private recovery locators before continuing; do not repeat completed work.
