@@ -2,17 +2,25 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — differential validation
+## Current increment — cleanup metadata
 
-GitHub #13 / RMU-30, branch `codex/13-exec-differential`, stacked on exec PR #18.
+GitHub #17 / RMU-33, branch `codex/17-cleanup-metadata`, stacked on differential
+PR #19. Implementation `32a2c370cc695ce1a38d59a5cbd3bb5f45e7738f` requires
+bounded regular cleanup metadata before delete effects and retains ownership
+records on required cleanup failure. All local gates, 21 tests, general kernel
+smoke and pinned exec differential pass; exact evidence is in
+`docs/parity/validation/2026-10-12-cleanup-metadata.md`. The original intermittent
+failure remains unresolved. Next: retain records on failed create rollback, then
+improve harness cleanup errors and bounded failure diagnostics.
+
+## Prior increment — differential validation
+
+PR #19 / GitHub #13 / RMU-30 is published at
+`a78d051ef3acafca11f09ebc1ecc867ef3b7c858`; hosted Rust/Nix checks pass.
 Implementation `e51c0f46d6a9a1a13fb2a41ddc9011844a2300b1` authenticates the pinned
 signed upstream reference and runs a private rootless exec differential slice.
-Exact-revision aggregate/decision evidence is in `docs/parity/validation/` and
-`docs/parity/exec-differential.md`. Four case groups match; two are known
-differences, not parity. Dirty-source development runs record no validated SHA.
-Formatting, Clippy, 19 Rust tests, architecture/inventory and both runtime suites
-passed at the clean implementation revision. Reference build reproduction and
-full OCI/kernel/architecture/concurrency/recovery coverage remain open.
+Four groups match; two are known differences, not parity. Source-build
+reproduction and complete OCI/kernel/concurrency/recovery coverage remain open.
 
 ## Prior increment — direct exec policy
 
@@ -56,26 +64,15 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Finish differential final revision checks and AI-generated review, publish and
-   attach its stacked PR. Exec PR #18 is published and hosted Rust/Nix checks
-   passed at `79bfe9951944bd4870dacb68d31dead1df09d787`.
-   Baseline PR #15 is already published and hosted Rust/Nix
-   checks passed at `d31afa97548e765ed1b1f46a5215d27c63c40487`; RMU-28 remains in
-   review. Read PR/GitHub/Linear state rather than repeating completed work.
-2. Begin GitHub #14 / RMU-29: audit recognized OCI fields against the pinned
-   specification and vendored realization. Inspect relevant commits and the
-   development log, split a concrete high-risk silent omission into an
-   issue-linked increment, reject before acquisition and validate its semantics.
-3. Begin #13 / RMU-30: use the signed, pinned reference artifact to establish an
-   audited differential runner; source builds and conformance tooling remain
-   additional obligations. Initially no Go/runc/Nix executables were installed;
-   a local reference artifact is now available. Upstream tests use fixed IDs
-   and host assumptions, so do not run them directly on shared host resources.
-4. Refine CLI #12 only with the audit and harness evidence. Preserve explicit
-   unsupported errors, privacy, unsafe-code forbid and dependency boundaries.
+1. Publish/attach the cleanup PR after final-head checks and reconcile RMU-33.
+2. Fix create rollback ownership loss after resource cleanup errors under #17.
+   Then preserve smoke operation/cleanup failures together and bounded diagnostics.
+3. Continue recognized OCI field semantic audit under #14/RMU-29 and expand
+   signed differential/conformance coverage under #13/RMU-30. CLI #12 remains
+   ordered behind security and validation evidence.
 
-Tracked work was clean at the implementation revision validation. Ignored
-`work/parity-upstream/` contains disposable research checkouts; `work/native-lib/`
-contains the existing linker alias; build artifacts remain ignored. No user
-files were modified outside the increment. Reconcile current working-tree state,
-exact PR head, Actions results and Linear before continuing or pausing.
+PR train: alpha #10, baseline #15, exec #18, differential #19. All prior hosted
+Rust/Nix checks pass. Broader issues remain open; no complete parity claim.
+Check current Git/PR/Linear state before repeating or changing completed work.
+Ignored work holds private research inputs, reference assets, test diagnostics
+and build artifacts. Preserve privacy and disposable resource boundaries.
