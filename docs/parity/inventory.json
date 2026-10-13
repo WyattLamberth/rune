@@ -13110,40 +13110,60 @@
       "status": "untested"
     },
     {
-      "evidence": [],
+      "evidence": [
+        {
+          "record": "docs/parity/validation/2026-10-12-numa-bounds.md",
+          "rune_revision": "ce207b9df26a2e8f3d8ff8bbed8eb738505bc425"
+        }
+      ],
       "id": "runtime-spec:schema/config-linux.json:schema-property:/linux/properties/memoryPolicy",
       "issue": 14,
       "kind": "schema-property",
       "locator": "/linux/properties/memoryPolicy",
       "source": "runtime-spec/schema/config-linux.json",
-      "status": "untested"
+      "status": "partial"
     },
     {
-      "evidence": [],
+      "evidence": [
+        {
+          "record": "docs/parity/validation/2026-10-12-numa-bounds.md",
+          "rune_revision": "ce207b9df26a2e8f3d8ff8bbed8eb738505bc425"
+        }
+      ],
       "id": "runtime-spec:schema/config-linux.json:schema-property:/linux/properties/memoryPolicy/properties/flags",
       "issue": 14,
       "kind": "schema-property",
       "locator": "/linux/properties/memoryPolicy/properties/flags",
       "source": "runtime-spec/schema/config-linux.json",
-      "status": "untested"
+      "status": "partial"
     },
     {
-      "evidence": [],
+      "evidence": [
+        {
+          "record": "docs/parity/validation/2026-10-12-numa-bounds.md",
+          "rune_revision": "ce207b9df26a2e8f3d8ff8bbed8eb738505bc425"
+        }
+      ],
       "id": "runtime-spec:schema/config-linux.json:schema-property:/linux/properties/memoryPolicy/properties/mode",
       "issue": 14,
       "kind": "schema-property",
       "locator": "/linux/properties/memoryPolicy/properties/mode",
       "source": "runtime-spec/schema/config-linux.json",
-      "status": "untested"
+      "status": "partial"
     },
     {
-      "evidence": [],
+      "evidence": [
+        {
+          "record": "docs/parity/validation/2026-10-12-numa-bounds.md",
+          "rune_revision": "ce207b9df26a2e8f3d8ff8bbed8eb738505bc425"
+        }
+      ],
       "id": "runtime-spec:schema/config-linux.json:schema-property:/linux/properties/memoryPolicy/properties/nodes",
       "issue": 14,
       "kind": "schema-property",
       "locator": "/linux/properties/memoryPolicy/properties/nodes",
       "source": "runtime-spec/schema/config-linux.json",
-      "status": "untested"
+      "status": "partial"
     },
     {
       "evidence": [],

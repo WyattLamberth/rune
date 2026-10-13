@@ -113,3 +113,13 @@ reviewed semantic evidence separately before regeneration. Do not invoke upstrea
 integration helpers on shared host storage: fixed IDs and host assumptions need
 isolation and an audited runner first (#13). No host configuration changes are
 needed for this source inventory.
+
+## First recognized-field evidence
+
+The four memoryPolicy schema entries are partial, with exact evidence at
+`ce207b9df26a2e8f3d8ff8bbed8eb738505bc425`. This covers rootless Linux amd64
+MPOL_LOCAL init/direct/process-file retention, bounded node parsing, existing
+mode/flag preflight rejection, and three safe kernel negative configurations.
+It does not verify every mode, flag, syntax, platform or concurrency cross-product.
+See `validation/2026-10-12-numa-bounds.md` and #22/#23/#14. No inventory entry
+is fully verified. Source declarations still require exhaustive semantic cases.

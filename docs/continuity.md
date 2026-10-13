@@ -2,16 +2,25 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — NUMA exec policy
+## Current increment — bounded NUMA preflight
 
-GitHub #22 / RMU-34, branch `codex/22-exec-numa-policy`, stacked on PR #21.
-Implementation `8e6390df096fd310f371a6225650ffc7bbae225e` preserves stored
-NUMA memoryPolicy during tenant composition. 24 tests, Rust gates, label tests,
-NUMA and existing exec differentials pass at that clean revision. A fresh exact
-prior-revision archive build reproduces both exec forms losing MPOL_LOCAL; the
-candidate and pinned runc retain it. Exact evidence is in
-`docs/parity/validation/2026-10-12-numa-policy.md`. Publish after final checks.
-Next urgent increment: #23 / RMU-35 bounds node expansion and preflights policy.
+GitHub #23 / RMU-35, branch `codex/23-numa-bounds`, stacked on PR #24.
+Implementation `ce207b9df26a2e8f3d8ff8bbed8eb738505bc425` bounds node IDs/text,
+merges intervals before expansion, and validates create/stored exec policy before
+acquisition. 29 tests, all Rust gates, label tests, NUMA preflight differential,
+failed-create and general Podman suites pass. Five focused groups match pinned
+runc. Exact evidence: `docs/parity/validation/2026-10-12-numa-bounds.md`.
+Four memoryPolicy source entries now link partial evidence; zero entries fully
+verified. Finish final checks and publication, then repair general-smoke cleanup
+error preservation/diagnostics under #17 and review safe train integration.
+
+## Prior increment — NUMA exec policy
+
+PR #24 / #22 / RMU-34, implementation
+`8e6390df096fd310f371a6225650ffc7bbae225e`, final head
+`4418d360ff6e97283c58e98bbcb6bb7526be78b3`. Local Rust/kernel differential and
+hosted Rust/Nix pass. Exact prior archive build reproduces dropped memory policy;
+candidate and signed runc retain it. Broader NUMA configuration gaps remain open.
 
 ## Prior increment — rollback ownership
 
@@ -81,14 +90,15 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach NUMA exec PR after final checks; reconcile RMU-34.
-2. Implement #23 / RMU-35 bounded NUMA node parsing and preflight before
-   acquisition. Keep any explicit safety/compatibility limit visible.
-3. Improve general smoke cleanup errors and aggregate failure diagnostics under
-   #17, and expand interrupted/resource failure/concurrent cleanup evidence.
-4. Continue recognized OCI field audit #14 and differential/conformance #13.
+1. Publish/attach bounded NUMA PR after final checks; reconcile RMU-35.
+2. Repair general smoke cleanup errors and aggregate failure diagnostics under
+   #17; continue interrupted/resource failure/concurrent cleanup evidence.
+3. Review and integrate the coherent validated PR train under the delegated
+   mandate, preserving commit decisions and exact delivered-revision validation.
+4. Continue recognized OCI field audit #14 and differential/conformance #13;
+   expand source inventory into exhaustive semantic cases/configuration matrix.
 
 PR train: alpha #10, baseline #15, exec #18, differential #19, cleanup #20,
-rollback #21. All prior hosted Rust/Nix checks pass. No complete parity claim.
+rollback #21, NUMA #24. All prior hosted Rust/Nix checks pass. No parity claim.
 Read current Git/PR/Linear state before repeating completed work. Private research
 inputs, source archive builds, reference assets and diagnostics remain ignored.
