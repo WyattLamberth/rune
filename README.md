@@ -66,5 +66,6 @@ Intel RDT, `--no-new-keyring`, direct `exec --tty` without a process file, and
 reproducible performance baselines, telemetry, and release artifacts remain backlog work.
 
 [OCI support matrix](docs/oci-support.md) · [Architecture](docs/architecture.md) · [security boundary](SECURITY.md) ·
+[runc parity baseline and gaps](docs/parity/README.md) · [Development log](docs/development-log.md) ·
 [GitHub backlog](https://github.com/WyattLamberth/rune/issues) ·
 [Linear delivery](https://linear.app/rmux/project/rune-4971526b84f3)
