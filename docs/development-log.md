@@ -161,3 +161,39 @@ Next obligations: commit and run the exact-revision slice, then expand security
 denial/failure/concurrency cases and the source-built/conformance environment
 matrix. Resolve policy/compatibility differences through compliant design and
 evidence. No complete parity or exhaustive semantic coverage claim.
+
+## 2026-10-12 — Preserve cleanup ownership on metadata failure (#17)
+
+Evidence: reviewed the original alpha commit `11515c5558a76215fbf6bc4e70e335d08e3329cd`,
+the exec decision record, #17/RMU-33 and the vendored delete/config paths. Delete
+previously treated any cleanup-config load failure as permission to skip resource
+cleanup and discard state. Intel RDT cleanup errors were also only warnings. This
+is a concrete independent defect; it is not an established cause of the earlier
+intermittent smoke failure. Differential PR #19 is published with passing hosted
+Rust/Nix checks at `a78d051ef3acafca11f09ebc1ecc867ef3b7c858`.
+
+Decision: require readable cleanup ownership before delete signals or persisted
+status changes. Read at most 4 MiB from a regular, non-symlink file, use nonblocking
+open to reject FIFOs without hanging, and reject unknown top-level fields. Return
+metadata, RDT, cgroup and poststop errors instead of discarding ownership records.
+Remove state only after required cleanup succeeds. No unsafe code or dependencies
+were added; the existing maintained-dependency trust boundary still applies.
+
+Alternatives: assuming missing metadata means no resources can leak existing
+resources. Reconstructing ownership from a mutable bundle would violate the
+stored-policy boundary and cannot prove what was acquired. A durable acquisition
+ledger with atomic writes and idempotent replay is the stronger recovery design,
+but requires a separate create/rollback increment; this change retains evidence
+and fails explicitly until that design exists. Nested hook field validation is
+not newly exhaustive. Interruptions before metadata creation can now require
+explicit recovery; that gap remains visible rather than reporting success.
+
+Development validation: 21 workspace tests passed, including missing, malformed,
+unknown-field, oversized, symlink, directory and FIFO metadata rejection with
+retained state and a live owned process. These are process/storage regressions,
+not container-isolation tests. Warnings-denied Clippy, architecture/inventory and
+the private general Podman kernel suite passed. The regenerated dependency patch
+applies to the checksum-pinned package and exactly reproduces vendored Rust/TOML
+files. Exact committed revision validation follows. Root-cause investigation of
+the intermittent failure, interrupted acquisition, concurrent deletion, RDT
+failure injection and retry/recovery acceptance remain open under #17/#13.

@@ -1,5 +1,6 @@
 use std::fs;
-use std::io::{BufReader, BufWriter, Write};
+use std::io::{BufWriter, Read, Write};
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Path, PathBuf};
 
 use oci_spec::runtime::{Hooks, Spec};
@@ -36,16 +37,20 @@ pub enum ConfigError {
     },
     #[error("missing linux in spec")]
     MissingLinux,
+    #[error("stored cleanup configuration exceeds 4 MiB limit")]
+    TooLarge,
 }
 
 type Result<T> = std::result::Result<T, ConfigError>;
 
 const YOUKI_CONFIG_NAME: &str = "youki_config.json";
+const MAX_CONFIG_BYTES: u64 = 4 * 1024 * 1024;
 
 /// A configuration for passing information obtained during container creation to other commands.
 /// Keeping the information to a minimum improves performance.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 #[non_exhaustive]
+#[serde(deny_unknown_fields)]
 pub struct YoukiConfig {
     pub hooks: Option<Hooks>,
     pub cgroup_path: PathBuf,
@@ -87,13 +92,41 @@ impl YoukiConfig {
 
     pub fn load<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path = path.as_ref();
-        let file =
-            fs::File::open(path.join(YOUKI_CONFIG_NAME)).map_err(|err| ConfigError::LoadIO {
+        let file = fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC | libc::O_NONBLOCK)
+            .open(path.join(YOUKI_CONFIG_NAME))
+            .map_err(|err| ConfigError::LoadIO {
                 source: err,
                 path: path.to_owned(),
             })?;
-        let reader = BufReader::new(file);
-        let config = serde_json::from_reader(reader).map_err(|err| ConfigError::LoadParse {
+        if !file
+            .metadata()
+            .map_err(|err| ConfigError::LoadIO {
+                source: err,
+                path: path.to_owned(),
+            })?
+            .is_file()
+        {
+            return Err(ConfigError::LoadIO {
+                source: std::io::Error::new(
+                    std::io::ErrorKind::InvalidInput,
+                    "cleanup configuration must be a regular file",
+                ),
+                path: path.to_owned(),
+            });
+        }
+        let mut bytes = Vec::new();
+        file.take(MAX_CONFIG_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .map_err(|err| ConfigError::LoadIO {
+                source: err,
+                path: path.to_owned(),
+            })?;
+        if bytes.len() as u64 > MAX_CONFIG_BYTES {
+            return Err(ConfigError::TooLarge);
+        }
+        let config = serde_json::from_slice(&bytes).map_err(|err| ConfigError::LoadParse {
             source: err,
             path: path.to_owned(),
         })?;

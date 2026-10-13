@@ -26,6 +26,12 @@ lifecycle effects through the core. The dependency manages process setup,
 namespace membership, filesystem isolation, cgroups, hooks and state storage.
 The local dependency patch is explicitly documented and licensed separately.
 
+Deletion requires readable, bounded regular cleanup metadata before signals or
+state changes. Corrupt/missing metadata and resource/hook teardown failures retain
+ownership records for diagnosis and retry. This deliberately fails incomplete
+recovery rather than guessing that no resources exist; the full recovery ledger
+and metadata reconstruction protocol remain open.
+
 The current design delegates lifecycle/resource realization to libcontainer.
 It is a real native adapter but not the complete resource-ledger state machine
 planned in the backlog. Full deterministic setup/rollback simulation, generation

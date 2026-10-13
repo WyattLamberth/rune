@@ -34,6 +34,10 @@ impl Container {
     pub fn delete(&mut self, force: bool) -> Result<(), LibcontainerError> {
         self.refresh_status()?;
 
+        // rune: cleanup ownership must be known before signals or state changes.
+        // Missing/corrupt metadata is a retryable failure, never successful deletion.
+        let config = YoukiConfig::load(&self.root)?;
+
         tracing::debug!("container status: {:?}", self.status());
 
         // Check if container is allowed to be deleted based on container status.
@@ -69,67 +73,44 @@ impl Container {
         // Once reached here, the container is verified that it can be deleted.
         debug_assert!(self.status().can_delete());
 
-        if let Err(err) = cleanup_intel_rdt(
+        cleanup_intel_rdt(
             self.intel_rdt_dir().map(|p| p.as_path()),
             self.intel_rdt_monitoring_dir().map(|p| p.as_path()),
             self.clean_up_intel_rdt_subdirectory(),
             self.id(),
-        ) {
-            tracing::warn!("failed to cleanup intel rdt due to: {err:?}, continue to delete");
-        }
+        )?;
 
-        if self.root.exists() {
-            match YoukiConfig::load(&self.root) {
-                Ok(config) => {
-                    tracing::debug!("config: {:?}", config);
+        tracing::debug!("config: {:?}", config);
+        let cmanager =
+            libcgroups::common::create_cgroup_manager(libcgroups::common::CgroupConfig {
+                cgroup_path: config.cgroup_path.to_owned(),
+                systemd_cgroup: self.systemd(),
+                container_name: self.id().to_string(),
+            })?;
+        cmanager.remove().map_err(|err| {
+            tracing::error!(cgroup_path = ?config.cgroup_path, "failed to remove cgroup due to: {err:?}");
+            err
+        })?;
 
-                    // remove the cgroup created for the container
-                    // check https://man7.org/linux/man-pages/man7/cgroups.7.html
-                    // creating and removing cgroups section for more information on cgroups
-                    let cmanager = libcgroups::common::create_cgroup_manager(
-                        libcgroups::common::CgroupConfig {
-                            cgroup_path: config.cgroup_path.to_owned(),
-                            systemd_cgroup: self.systemd(),
-                            container_name: self.id().to_string(),
-                        },
-                    )?;
-                    cmanager.remove().map_err(|err| {
-                        tracing::error!(cgroup_path = ?config.cgroup_path, "failed to remove cgroup due to: {err:?}");
-                        err
-                    })?;
-
-                    if let Some(hooks) = config.hooks.as_ref() {
-                        hooks::run_hooks(
-                            hooks.poststop().as_ref(),
-                            Some(&self.state),
-                            None,
-                            None,
-                            None,
-                        )
-                        .map_err(|err| {
-                            tracing::error!(err = ?err, "failed to run post stop hooks");
-                            err
-                        })?;
-                    }
-                }
-                Err(err) => {
-                    // There is a brief window where the container state is
-                    // created, but the container config is not yet generated
-                    // from the OCI spec. In this case, we assume as if we
-                    // successfully deleted the config and moving on.
-                    tracing::warn!(
-                        "skipping loading youki config due to: {err:?}, continue to delete"
-                    );
-                }
-            }
-
-            // remove the directory storing container state
-            tracing::debug!("remove dir {:?}", self.root);
-            fs::remove_dir_all(&self.root).map_err(|err| {
-                tracing::error!(?err, path = ?self.root, "failed to remove container dir");
-                LibcontainerError::OtherIO(err)
+        if let Some(hooks) = config.hooks.as_ref() {
+            hooks::run_hooks(
+                hooks.poststop().as_ref(),
+                Some(&self.state),
+                None,
+                None,
+                None,
+            )
+            .map_err(|err| {
+                tracing::error!(err = ?err, "failed to run post stop hooks");
+                err
             })?;
         }
+
+        // Remove ownership records only after every required cleanup succeeded.
+        fs::remove_dir_all(&self.root).map_err(|err| {
+            tracing::error!(?err, path = ?self.root, "failed to remove container dir");
+            LibcontainerError::OtherIO(err)
+        })?;
 
         Ok(())
     }

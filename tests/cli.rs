@@ -95,3 +95,68 @@ fn unsupported_flags_and_missing_containers_fail_without_success_json() {
         assert!(out.stdout.is_empty());
     }
 }
+
+#[test]
+fn delete_retains_state_and_owned_process_when_cleanup_metadata_is_unusable() {
+    for content in [
+        None,
+        Some(b"not-json".as_slice()),
+        Some(b"{\"cgroup_path\":\"x\",\"unknown\":true}".as_slice()),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let mut child = OwnedProcess(Command::new("sleep").arg("30").spawn().unwrap());
+        fixture(root.path(), child.0.id(), starttime(child.0.id()) + 1);
+        let state_path = root.path().join("test/state.json");
+        let original_state = fs::read(&state_path).unwrap();
+        if let Some(content) = content {
+            fs::write(root.path().join("test/youki_config.json"), content).unwrap();
+        }
+        let deleted = Command::new(env!("CARGO_BIN_EXE_rune"))
+            .arg("--root")
+            .arg(root.path())
+            .args(["delete", "--force", "test"])
+            .output()
+            .unwrap();
+        assert!(
+            !deleted.status.success(),
+            "missing cleanup ownership must not be successful deletion"
+        );
+        assert_eq!(fs::read(&state_path).unwrap(), original_state);
+        assert!(child.0.try_wait().unwrap().is_none());
+    }
+}
+
+#[test]
+fn cleanup_metadata_rejects_oversized_files_symlinks_and_nonregular_inputs() {
+    use std::os::unix::fs::symlink;
+    for kind in ["oversized", "symlink", "directory", "fifo"] {
+        let root = tempfile::tempdir().unwrap();
+        let mut child = OwnedProcess(Command::new("sleep").arg("30").spawn().unwrap());
+        fixture(root.path(), child.0.id(), starttime(child.0.id()) + 1);
+        let metadata = root.path().join("test/youki_config.json");
+        match kind {
+            "oversized" => fs::write(&metadata, vec![b' '; 4 * 1024 * 1024 + 1]).unwrap(),
+            "symlink" => {
+                let target = root.path().join("target.json");
+                fs::write(&target, b"{}").unwrap();
+                symlink(target, &metadata).unwrap();
+            }
+            "directory" => fs::create_dir(&metadata).unwrap(),
+            "fifo" => nix::unistd::mkfifo(
+                &metadata,
+                nix::sys::stat::Mode::S_IRUSR | nix::sys::stat::Mode::S_IWUSR,
+            )
+            .unwrap(),
+            _ => unreachable!(),
+        }
+        let deleted = Command::new(env!("CARGO_BIN_EXE_rune"))
+            .arg("--root")
+            .arg(root.path())
+            .args(["delete", "--force", "test"])
+            .output()
+            .unwrap();
+        assert!(!deleted.status.success());
+        assert!(root.path().join("test/state.json").is_file());
+        assert!(child.0.try_wait().unwrap().is_none());
+    }
+}

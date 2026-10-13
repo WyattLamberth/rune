@@ -21,6 +21,8 @@ Local changes:
 - Store process start time, refuse stale identities, and signal with pidfds.
 - Propagate failures to apply requested no-new-privileges settings.
 - Commit state through a synchronized temporary file and atomic rename.
+- Require bounded regular cleanup metadata before deletion effects, reject
+  symlink/nonregular metadata, and propagate cleanup failures while retaining state.
 
 These are local patches, not changes accepted by upstream. The minimal source
 patch is in `docs/libcontainer.patch`. Broader syscall/fault/conformance coverage
