@@ -90,16 +90,119 @@
          })?;
 --- a/crates/libcontainer/src/container/builder_impl.rs
 +++ b/crates/libcontainer/src/container/builder_impl.rs
-@@ -209,7 +209,8 @@
+@@ -209,7 +209,9 @@
              }
          }
 
 -        if let Some(container) = &mut self.container {
 +        if matches!(self.container_type, ContainerType::InitContainer)
-+            && let Some(container) = &mut self.container {
++            && let Some(container) = &mut self.container
++        {
              // update status and pid of the container process
              container
                  .set_status(ContainerStatus::Created)
+@@ -250,22 +252,15 @@
+                 tracing::error!(id = ?container.id(), error = ?e, "failed to cleanup intel rdt");
+                 errors.push(e.to_string());
+             }
+-
+-            if container.root.exists() {
+-                if let Err(e) = fs::remove_dir_all(&container.root) {
+-                    tracing::error!(container_root = ?container.root, error = ?e, "failed to delete container root");
+-                    errors.push(e.to_string());
+-                }
+-            }
+-        }
+-
+-        if !errors.is_empty() {
+-            return Err(LibcontainerError::Other(format!(
+-                "failed to cleanup container: {}",
+-                errors.join(";")
+-            )));
+-        }
+-
+-        Ok(())
++        }
++
++        // Keep the acquisition evidence when any resource cleanup failed.
++        super::cleanup::finish_cleanup(
++            self.container
++                .as_ref()
++                .map(|container| container.root.as_path()),
++            errors,
++        )
++        .map_err(LibcontainerError::Other)
+     }
+ }
+--- /dev/null
++++ b/crates/libcontainer/src/container/cleanup.rs
+@@ -0,0 +1,66 @@
++//! Finalize rollback only after resource teardown succeeds.
++#![forbid(unsafe_code)]
++
++use std::fs;
++use std::path::Path;
++
++pub(super) fn finish_cleanup(root: Option<&Path>, errors: Vec<String>) -> Result<(), String> {
++    if !errors.is_empty() {
++        return Err(format!("failed to cleanup container: {}", errors.join(";")));
++    }
++    if let Some(root) = root {
++        match fs::remove_dir_all(root) {
++            Ok(()) => {}
++            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
++            Err(error) => {
++                return Err(format!(
++                    "failed to remove container ownership records: {error}"
++                ));
++            }
++        }
++    }
++    Ok(())
++}
++
++#[cfg(test)]
++mod tests {
++    use super::*;
++
++    #[test]
++    fn resource_failure_retains_records_and_successful_retry_removes_them() {
++        let tmp = tempfile::tempdir().unwrap();
++        let root = tmp.path().join("owned");
++        fs::create_dir(&root).unwrap();
++        let records = root.join("state.json");
++        fs::write(&records, b"ownership evidence").unwrap();
++        let error = finish_cleanup(
++            Some(&root),
++            vec!["cgroup failure".into(), "RDT failure".into()],
++        )
++        .unwrap_err();
++        assert!(error.contains("cgroup failure") && error.contains("RDT failure"));
++        assert_eq!(fs::read(&records).unwrap(), b"ownership evidence");
++        finish_cleanup(Some(&root), Vec::new()).unwrap();
++        assert!(!root.exists());
++        finish_cleanup(Some(&root), Vec::new()).unwrap();
++    }
++
++    #[test]
++    fn record_removal_failure_is_returned_and_retains_the_input() {
++        let tmp = tempfile::tempdir().unwrap();
++        let file = tmp.path().join("non-directory");
++        fs::write(&file, b"retained").unwrap();
++        assert!(finish_cleanup(Some(&file), Vec::new()).is_err());
++        assert_eq!(fs::read(&file).unwrap(), b"retained");
++    }
++
++    #[test]
++    fn resource_errors_survive_without_a_state_directory() {
++        assert!(
++            finish_cleanup(None, vec!["resource failure".into()])
++                .unwrap_err()
++                .contains("resource failure")
++        );
++        finish_cleanup(None, Vec::new()).unwrap();
++    }
++}
 --- a/crates/libcontainer/src/container/container.rs
 +++ b/crates/libcontainer/src/container/container.rs
 @@ -97,6 +97,7 @@
@@ -331,6 +434,16 @@
          Self::validate_spec(&spec)?;
 
          spec.canonicalize_rootfs(&self.bundle).map_err(|err| {
+--- a/crates/libcontainer/src/container/mod.rs
++++ b/crates/libcontainer/src/container/mod.rs
+@@ -6,6 +6,7 @@
+ /// the exec command).
+ pub mod builder;
+ mod builder_impl;
++mod cleanup;
+ #[allow(clippy::module_inception)]
+ mod container;
+ mod container_checkpoint;
 --- a/crates/libcontainer/src/container/state.rs
 +++ b/crates/libcontainer/src/container/state.rs
 @@ -1,7 +1,6 @@

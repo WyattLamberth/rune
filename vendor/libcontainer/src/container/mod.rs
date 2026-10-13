@@ -6,6 +6,7 @@
 /// the exec command).
 pub mod builder;
 mod builder_impl;
+mod cleanup;
 #[allow(clippy::module_inception)]
 mod container;
 mod container_checkpoint;

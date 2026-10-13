@@ -28,3 +28,7 @@ These are local patches, not changes accepted by upstream. The minimal source
 patch is in `docs/libcontainer.patch`. Broader syscall/fault/conformance coverage
 and independent review remain required. The supplied policy label regression
 can run with `rustc --test vendor/libcontainer/src/rootfs/selinux.rs`.
+
+Create rollback now retains ownership records if cgroup or RDT teardown fails.
+The shared production filesystem finalizer is exercised by workspace fault/retry
+tests; it does not establish kernel resource failure or concurrency coverage.

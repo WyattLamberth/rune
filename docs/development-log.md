@@ -197,3 +197,34 @@ applies to the checksum-pinned package and exactly reproduces vendored Rust/TOML
 files. Exact committed revision validation follows. Root-cause investigation of
 the intermittent failure, interrupted acquisition, concurrent deletion, RDT
 failure injection and retry/recovery acceptance remain open under #17/#13.
+
+## 2026-10-12 — Retain acquisition evidence after failed create rollback (#17)
+
+Evidence: reviewed the original alpha `builder_impl` history and cleanup records.
+Its rollback collected cgroup/RDT errors but removed the state directory before
+returning those errors, losing acquisition evidence needed for retry. PR #20
+addresses delete-time metadata failure; it does not fix this separate create path.
+
+Decision: continue attempting both resource teardown operations, preserve their
+errors together, and remove ownership records only after both succeed. Extract
+the actual filesystem finalizer into a safe backend module and exercise it from
+workspace tests with resource-failure injection, retained bytes, successful retry,
+already-absent state, removal failure and absent-container errors. A missing state
+directory is idempotent success after resource cleanup; other removal errors are
+returned. No unsafe/dependency/lockfile changes.
+
+Alternatives: logging errors while deleting ownership loses recovery evidence.
+Stopping at the first resource error unnecessarily skips the other teardown.
+A full durable acquisition ledger remains necessary for crash recovery and
+partial directory-removal failures; this increment does not claim that design.
+Fault tests exercise the production filesystem finalizer, not injected kernel
+cgroup/RDT failures or real concurrent rollback. Existing create outer/cleanup
+error composition is preserved. Exact revision validation follows.
+
+Development validation: all 24 workspace tests, warnings-denied Clippy and
+architecture/inventory checks pass. The new private rootless create-failure
+suite passes missing and non-executable commands, checking runtime state before
+Podman removal can mask rollback failures. Finalizer fault tests retain records
+after resource errors and remove them after a successful retry. Kernel resource
+failure injection, leak enumeration, interrupted acquisition and concurrency
+remain open; successful rollback tests do not close the intermittent #17 failure.

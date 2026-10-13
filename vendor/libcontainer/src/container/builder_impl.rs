@@ -210,7 +210,8 @@ impl ContainerBuilderImpl {
         }
 
         if matches!(self.container_type, ContainerType::InitContainer)
-            && let Some(container) = &mut self.container {
+            && let Some(container) = &mut self.container
+        {
             // update status and pid of the container process
             container
                 .set_status(ContainerStatus::Created)
@@ -251,22 +252,15 @@ impl ContainerBuilderImpl {
                 tracing::error!(id = ?container.id(), error = ?e, "failed to cleanup intel rdt");
                 errors.push(e.to_string());
             }
-
-            if container.root.exists() {
-                if let Err(e) = fs::remove_dir_all(&container.root) {
-                    tracing::error!(container_root = ?container.root, error = ?e, "failed to delete container root");
-                    errors.push(e.to_string());
-                }
-            }
         }
 
-        if !errors.is_empty() {
-            return Err(LibcontainerError::Other(format!(
-                "failed to cleanup container: {}",
-                errors.join(";")
-            )));
-        }
-
-        Ok(())
+        // Keep the acquisition evidence when any resource cleanup failed.
+        super::cleanup::finish_cleanup(
+            self.container
+                .as_ref()
+                .map(|container| container.root.as_path()),
+            errors,
+        )
+        .map_err(LibcontainerError::Other)
     }
 }
