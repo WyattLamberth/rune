@@ -12,6 +12,14 @@ requirements, and returns owned typed snapshots. Builders receive those snapshot
 without rereading caller-controlled configuration. The backend persists the full
 create config for exec, retaining original namespaces and security configuration.
 
+`src/exec_policy.rs` composes exec processes without filesystem or kernel effects.
+Direct exec begins with the bounded stored create process; CLI overrides change
+only specified policy. Process files retain explicit values and inherit omitted
+container security/resource policy. Ambiguous process-file/override combinations
+are rejected. Environment duplicates resolve to the last assignment so executable
+lookup and the installed environment agree. The Linux adapter passes the complete
+validated snapshot to the backend rather than its default process builder.
+
 `src/linux.rs` composes the native Rust library, validates IDs for every command,
 serializes commands with a private per-container nonblocking flock and dispatches
 lifecycle effects through the core. The dependency manages process setup,

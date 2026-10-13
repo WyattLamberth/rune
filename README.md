@@ -41,6 +41,7 @@ default SELinux/seccomp settings, without changing Podman defaults.
 
 ```sh
 python3 scripts/podman-smoke.py --runtime "$PWD/target/release/rune"
+python3 scripts/exec-policy-smoke.py --runtime "$PWD/target/release/rune"
 cargo test --workspace --locked
 cargo clippy --workspace --locked --all-targets -- -D warnings
 RUNE_TEST_SEED=42 RUNE_TEST_STEPS=100000 cargo test --locked --test universe
@@ -58,6 +59,12 @@ State defaults to `$XDG_RUNTIME_DIR/rune`, including when Podman enters its user
 namespace; otherwise root uses `/run/rune`. Use `--root` to select a private store.
 Lock files survive deletion so concurrent callers always lock the same inode;
 long-term lock-file reclamation is not implemented yet.
+
+Direct exec retains the stored create process's user, cwd, AppArmor and resource
+policy, then applies explicit CLI overrides. Process files inherit omitted
+security/resource fields; combining `--process` with process overrides or a
+command errors explicitly. Rune preserves the create snapshot instead of
+rereading a changed bundle. Full direct-exec parity remains tracked in #16/#13.
 
 Accepted OCI schema versions are listed in code, including Podman's 1.2.1. This
 is not a claim that every field is implemented. Unknown fields are rejected;

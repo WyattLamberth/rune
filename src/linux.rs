@@ -188,11 +188,13 @@ pub fn exec(root: &Path, args: &liboci_cli::Exec) -> Result<i32> {
     if !(0..=256).contains(&args.preserve_fds) {
         bail!("preserve-fds must be between 0 and 256");
     }
-    let process = args
+    let init = crate::validation::stored_process(&c.root)?;
+    let supplied = args
         .process
         .as_deref()
         .map(crate::validation::process)
         .transpose()?;
+    let process = crate::exec_policy::resolve(init, supplied, args)?;
     let pid = ContainerBuilder::new(args.container_id.clone(), SyscallType::default())
         .with_root_path(root)?
         .with_console_socket(args.console_socket.as_ref())
@@ -200,20 +202,9 @@ pub fn exec(root: &Path, args: &liboci_cli::Exec) -> Result<i32> {
         .with_preserved_fds(args.preserve_fds)
         .validate_id()?
         .as_tenant()
-        .with_process_snapshot(process)
+        .with_process_snapshot(Some(process))
         .with_detach(args.detach)
-        .with_cwd(args.cwd.as_ref())
-        .with_env(args.env.clone().into_iter().collect())
-        .with_process(args.process.as_ref())
-        .with_process_label(args.process_label.clone())
-        .with_no_new_privs(args.no_new_privs)
-        .with_container_args(args.command.clone())
-        .with_additional_gids(args.additional_gids.clone())
-        .with_user(args.user.map(|(user, _)| user))
-        .with_group(args.user.and_then(|(_, group)| group))
-        .with_capabilities(args.cap.clone())
         .with_sub_cgroup(args.cgroup.clone())
-        .with_apparmor(args.apparmor.clone())
         .build()?;
     drop(held);
     if args.detach {

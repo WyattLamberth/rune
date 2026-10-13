@@ -24,7 +24,7 @@ fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
     }
     Ok(value)
 }
-fn check_process(process: &Process) -> Result<()> {
+pub(crate) fn check_process(process: &Process) -> Result<()> {
     let args = process
         .args()
         .as_ref()
@@ -51,6 +51,15 @@ pub fn process(path: &Path) -> Result<Process> {
     let process = read_json(path)?;
     check_process(&process)?;
     Ok(process)
+}
+pub fn stored_process(container_dir: &Path) -> Result<Process> {
+    let spec: Spec = read_json(&container_dir.join("rune-config.json"))?;
+    let process = spec
+        .process()
+        .as_ref()
+        .ok_or_else(|| anyhow::anyhow!("stored configuration is missing process"))?;
+    check_process(process)?;
+    Ok(process.clone())
 }
 pub fn bundle(path: &Path) -> Result<Spec> {
     let mut spec: Spec = read_json(&path.join("config.json"))?;
@@ -157,6 +166,35 @@ mod tests {
         )?;
         assert!(
             bundle(dir.path())
+                .unwrap_err()
+                .to_string()
+                .contains("4 MiB")
+        );
+        Ok(())
+    }
+    #[test]
+    fn stored_exec_process_is_bounded_and_independent_of_bundle_changes() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let spec = Spec::default();
+        spec.save(dir.path().join("rune-config.json"))?;
+        std::fs::write(dir.path().join("config.json"), b"{}")?;
+        assert_eq!(
+            stored_process(dir.path())?,
+            spec.process().as_ref().unwrap().clone()
+        );
+        let mut spec = serde_json::to_value(spec)?;
+        spec["process"]["unknownPrivilege"] = serde_json::json!(true);
+        std::fs::write(
+            dir.path().join("rune-config.json"),
+            serde_json::to_vec(&spec)?,
+        )?;
+        assert!(stored_process(dir.path()).is_err());
+        std::fs::write(
+            dir.path().join("rune-config.json"),
+            vec![b' '; MAX_CONFIG_BYTES as usize + 1],
+        )?;
+        assert!(
+            stored_process(dir.path())
                 .unwrap_err()
                 .to_string()
                 .contains("4 MiB")

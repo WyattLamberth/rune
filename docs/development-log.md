@@ -70,3 +70,56 @@ annotations and every configuration cross-product. Pin build/test tooling and
 test both runtimes with audited disposable resources. Audit recognized fields
 for silent omissions before relying on backend acceptance. Missing decision
 records and incorrect Linear status remain review defects.
+
+## 2026-10-12 — Preserve stored process policy for exec (#16 / RMU-32)
+
+Problem: direct exec reconstructed `ProcessBuilder` defaults in the backend and
+lost stored AppArmor, user/group, cwd, rlimits, scheduler, I/O priority, OOM
+adjustment and umask. Podman's process-file exec smoke did not cover that path.
+Read the relevant alpha commit (`11515c5`), vendor provenance, current decisions,
+GitHub #16 and Linear RMU-32 before changing it. Pinned runc `exec.go::getProcess`
+uses configured process policy, and `container_linux.go::newInitConfig` supplies
+container policy for omitted security/resource fields.
+
+Decision: compose a complete owned process in rune's OCI adapter. Read the stored
+create snapshot through the existing bounded, unknown-field-rejecting parser;
+retain the immutable-bundle decision. Direct exec clones original policy and
+applies explicit overrides. Process-file exec retains its own user/cwd/command
+and inherits absent security/resource fields, including empty labels/rlimit lists.
+Pass the resulting snapshot to the backend; no backend patch or new dependency.
+The composition function has no filesystem or kernel effects and its production
+path is tested directly. Linux/state access remains in adapters.
+
+Alternatives: patching a few backend defaults would leave other accepted fields
+silently dropped; cloning only named fields would repeat that risk. Reusing the
+mutable bundle would reverse the earlier snapshot boundary. A full backend
+replacement is unnecessary for this defect, but remains available when evidence
+justifies it. No unsafe code, dependency or isolation relaxation is introduced.
+
+Compatibility limits: process-file plus process overrides/command is explicitly
+rejected because the backend otherwise ignored most such settings. Runc ignores
+some combinations; this remains a documented compatibility gap for a compliant
+design under #12/#16. Omitted process-file no-new-privileges inherits original
+policy in rune; runc's boolean decoder can treat omission as false. Explicit
+false remains distinct. Resolve this difference with differential/security
+evidence rather than silently dropping requested isolation. Direct `--tty` and
+explicit false CLI no-new-privileges remain unsupported.
+
+Environment composition needed another correction: backend executable validation
+reads the first PATH entry while environment installation uses last assignment.
+Resolve duplicate environment keys to the last assignment before the backend,
+preserving deterministic ordering. Tests cover repeated overrides and PATH,
+retained complete process policy, capabilities without implicit defaults,
+identity/group semantics, process-file fallback/explicit policy, malformed input,
+conflicting options and bounded stored snapshots.
+
+Development validation: 19 workspace tests and warnings-denied Clippy pass.
+Disposable direct-runtime kernel checks pass UID/GID, cwd, rlimit, environment,
+capabilities, no-new-privileges, process-file fallback, overrides, init identity
+and cleanup. General Podman smoke passed on a diagnostic rerun; an earlier
+uncommitted development run failed final runtime-state cleanup after its other
+assertions passed. That failure was not captured with an exact source snapshot;
+it remains GitHub #17 / RMU-33, not resolved by the later pass. No AppArmor denial,
+full runc differential, complete cleanup or parity claim is made. Exact committed
+revision evidence follows in the validation record and PR. Baseline PR #15's
+hosted Rust/Nix checks passed at `d31afa97548e765ed1b1f46a5215d27c63c40487`.

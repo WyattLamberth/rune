@@ -13,6 +13,7 @@ conformance claim.
 | IDs and state | Bounded single path component; owned private state root; per-ID locks and atomic commits | Lock, symlink, stale identity and state-write regressions |
 | Lifecycle | create/start/state/kill/delete, pause/resume, exec | Rootless Podman smoke; raw create barrier and crash recovery remain separate tests |
 | Process | Workload output, environment/cwd/user delegated to libcontainer | Output/nonzero exit smoke; expanded user/rlimit cases open |
+| Exec process policy | Stored init snapshot plus explicit direct-exec overrides; process-file omitted security/resource policy inherited | Pure policy regressions and disposable direct-exec kernel test; complete AppArmor denial and pinned-runc differential cases remain #16/#13 |
 | Namespaces | Native Linux adapter honors the bundle | PID/cgroup and default rootless network smoke; complete namespace matrix open |
 | Cgroup v2 | systemd manager; memory and process limits | Actual 64 MiB / 32 process limits and isolated cgroup view asserted |
 | Capabilities / privilege | Native capability setup; requested no-new-privileges failures propagate | cap-drop-all and no-new-privileges smoke |

@@ -1,5 +1,6 @@
 #![forbid(unsafe_code)]
 
+mod exec_policy;
 mod linux;
 mod validation;
 
