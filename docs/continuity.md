@@ -2,7 +2,19 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — direct exec policy
+## Current increment — differential validation
+
+GitHub #13 / RMU-30, branch `codex/13-exec-differential`, stacked on exec PR #18.
+Implementation `e51c0f46d6a9a1a13fb2a41ddc9011844a2300b1` authenticates the pinned
+signed upstream reference and runs a private rootless exec differential slice.
+Exact-revision aggregate/decision evidence is in `docs/parity/validation/` and
+`docs/parity/exec-differential.md`. Four case groups match; two are known
+differences, not parity. Dirty-source development runs record no validated SHA.
+Formatting, Clippy, 19 Rust tests, architecture/inventory and both runtime suites
+passed at the clean implementation revision. Reference build reproduction and
+full OCI/kernel/architecture/concurrency/recovery coverage remain open.
+
+## Prior increment — direct exec policy
 
 GitHub #16 / RMU-32, branch `codex/16-exec-process-policy`, stacked on parity
 baseline PR #15. Implementation `3b6b8ab4c936d9cba29961da73de308b87ef75c4`
@@ -44,8 +56,10 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Finish direct-exec final revision checks and AI-generated review, publish and
-   attach its stacked PR. Baseline PR #15 is already published and hosted Rust/Nix
+1. Finish differential final revision checks and AI-generated review, publish and
+   attach its stacked PR. Exec PR #18 is published and hosted Rust/Nix checks
+   passed at `79bfe9951944bd4870dacb68d31dead1df09d787`.
+   Baseline PR #15 is already published and hosted Rust/Nix
    checks passed at `d31afa97548e765ed1b1f46a5215d27c63c40487`; RMU-28 remains in
    review. Read PR/GitHub/Linear state rather than repeating completed work.
 2. Begin GitHub #14 / RMU-29: audit recognized OCI fields against the pinned
