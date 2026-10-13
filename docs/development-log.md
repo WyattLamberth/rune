@@ -386,3 +386,17 @@ and deeply nested state JSON. Formatting and architecture/inventory checks pass.
 The isolated worktree avoids concurrent edits by the other active rune chat.
 Rust and kernel exact-revision validation follow after the implementation commit;
 no dirty run is assigned an exact validated revision.
+
+Validation and integration record: rebased the narrow output/JSON change onto
+`7a609bc`, which independently corrects full-ID enumeration. Exact clean
+implementation `aa2581ae1e6b65bfc94518a22f8658fecb7b58f4` passes ten Python
+regressions, 29 Rust tests, formatting, warnings-denied Clippy, architecture and
+inventory integrity, focused exec/NUMA differentials and failed-create rollback.
+The broad differential retains one record in each runtime at cleanup-check;
+subsequent native queries report stopped and direct deletion recovers both
+private trees. Preserve this failure as a gap, not a claimed root cause. Local
+Nix validation is unavailable because nix is not installed. AI-generated review
+inspected history, production helper bounds, cleanup preservation and delivery
+context. Exact aggregate evidence and continuation obligations are recorded in
+`docs/parity/validation/2026-10-13-smoke-output-bounds.md`. The branch is isolated
+from the other active rune chat; ongoing ownership selection is pending.

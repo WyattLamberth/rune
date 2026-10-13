@@ -1,0 +1,49 @@
+{
+  "rune_revision": "aa2581ae1e6b65bfc94518a22f8658fecb7b58f4",
+  "records": [
+    {
+      "runtime_kind": "runc",
+      "native_statuses": [
+        "stopped"
+      ],
+      "cleanup": {
+        "before": {
+          "entries": 0,
+          "truncated": false,
+          "statuses": {},
+          "records": {}
+        },
+        "after": {
+          "entries": 0,
+          "truncated": false,
+          "statuses": {},
+          "records": {}
+        },
+        "resources_retained": false
+      },
+      "error_count": 0
+    },
+    {
+      "runtime_kind": "rune",
+      "native_statuses": [
+        "stopped"
+      ],
+      "cleanup": {
+        "before": {
+          "entries": 0,
+          "truncated": false,
+          "statuses": {},
+          "records": {}
+        },
+        "after": {
+          "entries": 0,
+          "truncated": false,
+          "statuses": {},
+          "records": {}
+        },
+        "resources_retained": false
+      },
+      "error_count": 0
+    }
+  ]
+}
