@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run the narrow exec kernel suite against rune and the pinned signed runc artifact."""
+"""Run a focused exec kernel suite against rune and the pinned signed runc artifact."""
 import argparse
 import hashlib
 import json
@@ -20,6 +20,7 @@ def sha256(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--suite", choices=["exec", "numa"], default="exec")
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-dirty", action="store_true", help="development only; record no validated rune revision")
@@ -34,7 +35,8 @@ def main():
     subprocess.run(["bash", "scripts/build-local.sh"], cwd=ROOT, check=True)
     metadata = json.loads(subprocess.check_output(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"], cwd=ROOT))
     rune = Path(metadata["target_directory"]) / "debug/rune"
-    report = {"format": 1, "rune_revision": None if dirty else head,
+    suite = "exec-policy-smoke.py" if args.suite == "exec" else "numa-policy-smoke.py"
+    report = {"format": 1, "suite": args.suite, "rune_revision": None if dirty else head,
               "development_base": head if dirty else None,
               "rune_binary_sha256": sha256(rune), "runc_revision": REFERENCE_REVISION,
               "runc_binary_sha256": REFERENCE_SHA,
@@ -42,14 +44,14 @@ def main():
               "reference_source_build_reproduced": False,
               "rustc": subprocess.check_output(["rustc", "--version"], cwd=ROOT, text=True).strip(),
               "cargo_lock_sha256": sha256(ROOT / "Cargo.lock"),
-              "suite_sha256": sha256(ROOT / "scripts/exec-policy-smoke.py"),
+              "suite_sha256": sha256(ROOT / "scripts" / suite),
               "image": "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15",
-              "scope": "Rootless direct exec kernel subset; not complete conformance or parity.",
+              "scope": "Rootless " + args.suite + " exec kernel subset; not complete conformance or parity.",
               "runtimes": {}, "comparisons": {}}
     with tempfile.TemporaryDirectory(prefix="rune-exec-differential-") as directory:
         for kind, binary in (("runc", reference), ("rune", rune)):
             output = Path(directory) / (kind + ".json")
-            result = subprocess.run([sys.executable, str(ROOT / "scripts/exec-policy-smoke.py"),
+            result = subprocess.run([sys.executable, str(ROOT / "scripts" / suite),
                                      "--runtime", str(binary), "--runtime-kind", kind,
                                      "--results", str(output)], cwd=ROOT, capture_output=True)
             # Do not include subprocess logs, container IDs, paths or workload
@@ -61,7 +63,7 @@ def main():
     if left and right:
         for case in sorted(set(left["cases"]) | set(right["cases"])):
             passed = left["cases"].get(case) == right["cases"].get(case) == "pass"
-            report["comparisons"][case] = ("known_difference" if case in right["known_differences"] else "matching_assertions") if passed else "validation_gap"
+            report["comparisons"][case] = ("known_difference" if case in right.get("known_differences", []) else "matching_assertions") if passed else "validation_gap"
     after_head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     after_dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT, text=True)
     changed = after_head != head or after_dirty != dirty

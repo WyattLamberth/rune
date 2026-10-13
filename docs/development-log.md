@@ -228,3 +228,36 @@ Podman removal can mask rollback failures. Finalizer fault tests retain records
 after resource errors and remove them after a successful retry. Kernel resource
 failure injection, leak enumeration, interrupted acquisition and concurrency
 remain open; successful rollback tests do not close the intermittent #17 failure.
+
+## 2026-10-12 — Preserve per-process NUMA policy during exec (#22)
+
+Evidence: read tenant adaptation history, #14/RMU-29 and pinned OCI 1.3 Linux
+memoryPolicy plus runc setns/standard-init code. The backend applies memory policy
+to each init process, but its tenant Linux reconstruction dropped the field.
+Namespace entry cannot inherit another process's NUMA policy. A private kernel
+probe at prior head `d2a7290ec3a7b715760f115addc8ffcf8dae9464` found configured
+MPOL_LOCAL in init but absent during rune exec; pinned runc retained it. A fresh
+archive build of that exact prior commit reproduces direct and process-file
+policy loss with the new focused suite. No giant-node inputs were executed.
+
+Decision: copy the stored container memoryPolicy into the tenant spec alongside
+other per-process container settings. Exercise native init, direct and process-file
+exec by checking actual local-policy mappings in procfs, then verify cleanup.
+A private fixture adapter adds only memoryPolicy to Podman's ordinary disposable
+bundle before runtime create; all commands then invoke the native runtime. This
+is test fixture preparation, not rune delegating execution to another runtime.
+The signed-reference differential runner now accepts this focused suite and
+retains its exact source/binary/lock/image/suite provenance.
+
+Alternatives: relying on namespace membership silently drops policy. Rejecting
+all NUMA policy would discard existing supported init behavior. Copying it
+preserves the same native syscall path, while kernel differential evidence tests
+its effect rather than only checking field presence. No unsafe/dependency/lockfile
+changes or weakened isolation. Other modes/flags, rootful and architecture
+cross-products, denied kernel features and concurrency remain gaps.
+
+The same audit found unbounded node-range expansion and high-ID nodemask
+allocation despite bounded JSON, with validation after acquisition. This separate
+urgent defect is #23 / RMU-35; do not claim complete NUMA support until bounded
+preflight and adversarial/failure evidence exist. Development MPOL_LOCAL init,
+direct/process-file exec and cleanup pass for rune and the pinned runc.

@@ -14,7 +14,7 @@ Local changes:
   requested labels fail closed. Skip invalid cgroup context mount options.
 - Refuse a fallback to the host cgroup root after entering a cgroup namespace.
 - Apply requested SELinux process labels before announcing creation readiness.
-- Preserve SELinux and seccomp configuration on exec, provide exec container
+- Preserve NUMA memory policy, SELinux and seccomp configuration on exec, provide exec container
   metadata to the seccomp handshake, and retain the init PID during exec.
 - Feed validated spec/process snapshots directly to the builders and persist
   the full create configuration for subsequent exec rather than rereading bundles.

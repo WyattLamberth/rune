@@ -452,8 +452,15 @@ impl TenantContainerBuilder {
             process_builder.build()?
         };
 
-        let label = self.process_label.clone().or_else(|| process.selinux_label().clone())
-            .or_else(|| spec.process().as_ref().and_then(|p| p.selinux_label().clone()));
+        let label = self
+            .process_label
+            .clone()
+            .or_else(|| process.selinux_label().clone())
+            .or_else(|| {
+                spec.process()
+                    .as_ref()
+                    .and_then(|p| p.selinux_label().clone())
+            });
         process.set_selinux_label(label);
 
         let container_pid = container.pid().ok_or(LibcontainerError::Other(
@@ -485,6 +492,11 @@ impl TenantContainerBuilder {
 
         if let Some(seccomp) = spec_linux.seccomp() {
             linux_builder = linux_builder.seccomp(seccomp.clone());
+        }
+
+        // NUMA policy is per-process, so namespace entry does not inherit it.
+        if let Some(memory_policy) = spec_linux.memory_policy() {
+            linux_builder = linux_builder.memory_policy(memory_policy.clone());
         }
         let linux = linux_builder.build()?;
         spec.set_process(Some(process)).set_linux(Some(linux));
