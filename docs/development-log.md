@@ -306,3 +306,40 @@ it then exercises valid init/direct/process-file policy and cleanup. All five
 groups match in a dirty development run (no validated SHA). Giant ranges run only
 through the newly bounded parser/adapter tests, never through the old runtime.
 Patch reproduction passes against the checksum-pinned dependency archive.
+
+## 2026-10-13 — Retain smoke cleanup evidence and preserve failures (#17)
+
+Evidence: revisited smoke history and the missing original failure records. The
+general suite ignored forced-removal results and could wipe owned state after
+cleanup failed. Exec/NUMA/failure suites also removed their private trees even
+when resources were not confirmed cleaned. The existing loop therefore could
+lose the ownership evidence needed to diagnose intermittent leftover state.
+
+Decision: use a shared bounded cleanup/diagnostic helper across all four suites.
+Preserve operation and cleanup errors, enumerate only the generated private
+Podman store, validate owned IDs, and reject uncertain cleanup. Inspect at most
+32 state entries and 64 KiB per state record using anchored directory descriptors
+and no-follow/nonblocking opens. Aggregate status/record categories exclude IDs,
+paths, workload contents and logs. Retain uncertain resources with a mode-0600
+private recovery locator under ignored work. Confirm private tree removal after
+namespace cleanup; preserve subsequent removal errors. Add seven control and
+filesystem fault tests to CI, including optimized-Python rejection and safe
+timeout reporting. Differential provenance now includes the helper digest.
+
+Development evidence changed the investigation: a broad signed-reference run
+retained two runc records; another retained one runc record and one rune record.
+Native state queries during recovery reported stopped for the latter pair; the
+rune snapshot belonged to the controlled exit-status case. Both direct forced
+deletes succeeded. Owned private trees were recovered, and no recovery locators
+or test processes remain. Namespace tree cleanup once returned zero while a
+residual tree remained; the helper now confirms removal and reports errors.
+These runs had uncommitted harness changes and no exact candidate revision, so
+they are development evidence only. They do not establish the original failure's
+root cause, a runtime regression, concurrency correctness or comparative merit.
+
+Alternatives: discarding records after errors hides failures; ignoring repeated
+removal errors falsely claims cleanup. Waiting silently for state disappearance
+would change the assertion without proving the expected asynchronous contract.
+Retain the strict assertion and gather exact clean-revision evidence next. The
+broader Podman comparison remains a validation gap until explained. No runtime
+policy, unsafe code, dependencies, lockfiles or isolation settings changed.

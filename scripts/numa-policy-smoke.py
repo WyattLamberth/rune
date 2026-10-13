@@ -4,8 +4,9 @@ import argparse
 import hashlib
 import json
 from pathlib import Path
-import subprocess
 import sys
+sys.dont_write_bytecode = True
+from smoke_cleanup import finish_resources, run_bounded, public_error
 import tempfile
 import uuid
 
@@ -56,14 +57,14 @@ def main():
     expected = 0 if args.expect_exec == 'retained' else 1
 
     def call(argv, timeout=45):
-        result = subprocess.run(base + argv, capture_output=True, text=True, timeout=timeout)
+        result = run_bounded(base + argv, text=True, timeout=timeout)
         if result.returncode:
             raise RuntimeError(f'{argv[0]} exited {result.returncode}; output withheld')
         return result.stdout.strip()
 
     def direct(argv):
-        result = subprocess.run(base + ['unshare', str(runtime), '--root', str(root / 'state'),
-                                       'exec'] + argv, capture_output=True, timeout=45)
+        result = run_bounded(base + ['unshare', str(runtime), '--root', str(root / 'state'),
+                                       'exec'] + argv, timeout=45)
         assert result.returncode == expected, 'NUMA exec policy differs from expected classification'
 
     try:
@@ -74,7 +75,7 @@ def main():
                 policy_file.write_text(json.dumps(policy))
                 cid = call(['create', '--name', f'rune-numa-invalid-{uuid.uuid4().hex}',
                             '--network', 'none', IMAGE, 'true'])
-                failed = subprocess.run(base + ['start', cid], capture_output=True, timeout=45)
+                failed = run_bounded(base + ['start', cid], timeout=45)
                 assert failed.returncode != 0, 'invalid NUMA policy unexpectedly started'
                 state = root / 'state'
                 assert not state.exists() or not any(p.name != '.rune-locks' for p in state.iterdir()), 'invalid-policy rollback left state'
@@ -103,25 +104,15 @@ def main():
         cases[current] = 'pass'
     except Exception as error:
         cases[current] = 'validation_gap'
-        errors.append(error)
+        errors.append(public_error(error))
     finally:
         before = len(errors)
-        if cid:
-            try:
-                call(['rm', '--force', cid])
-            except Exception as error:
-                errors.append(error)
-        try:
-            state = root / 'state'
-            if state.exists() and any(p.name != '.rune-locks' for p in state.iterdir()):
-                errors.append(RuntimeError('runtime state remained after cleanup'))
-            call(['unshare', 'python3', '-c', 'import shutil,sys; shutil.rmtree(sys.argv[1])', str(root)])
-        except Exception as error:
-            errors.append(error)
+        cleanup_report = finish_resources(root, runtime, call, errors,
+            Path(__file__).resolve().parents[1] / 'work/smoke-recovery')
         cases['cleanup'] = 'pass' if len(errors) == before else 'validation_gap'
     results = {'runtime_kind': args.runtime_kind, 'binary_sha256': binary_sha,
         'image': IMAGE, 'policy': 'MPOL_LOCAL', 'expected_exec_policy': args.expect_exec,
-        'cases': cases, 'gaps': ['other-NUMA-modes-and-flags', 'malformed-policy-preflight',
+        'cases': cases, 'cleanup': cleanup_report, 'gaps': ['other-NUMA-modes-and-flags', 'malformed-policy-preflight',
             'denied-kernel-features', 'rootful', 'architectures', 'concurrency']}
     if args.results:
         args.results.write_text(json.dumps(results, indent=2) + '\n')

@@ -3,8 +3,9 @@
 import argparse
 import json
 from pathlib import Path
-import subprocess
 import sys
+sys.dont_write_bytecode = True
+from smoke_cleanup import finish_resources, run_bounded, public_error
 import tempfile
 
 IMAGE = "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15"
@@ -31,14 +32,14 @@ def main():
     current = "direct-policy"
 
     def call(argv, timeout=45):
-        result = subprocess.run(base + argv, capture_output=True, text=True, timeout=timeout)
+        result = run_bounded(base + argv, text=True, timeout=timeout)
         if result.returncode:
             raise RuntimeError(f"{argv[0]} failed with exit {result.returncode}; output withheld")
         return result.stdout.strip()
 
     def direct(argv, expected=0):
-        result = subprocess.run(base + ["unshare", str(runtime), "--root", str(root / "state"),
-                                      "exec"] + argv, capture_output=True, text=True, timeout=45)
+        result = run_bounded(base + ["unshare", str(runtime), "--root", str(root / "state"),
+                                      "exec"] + argv, text=True, timeout=45)
         if result.returncode != expected:
             raise RuntimeError(f"direct exec exited {result.returncode}, expected {expected}; output withheld")
         return result.stdout.strip()
@@ -88,24 +89,14 @@ def main():
         cases[current] = "pass"
     except Exception as error:
         cases[current] = "fail"
-        errors.append(error)
+        errors.append(public_error(error))
     finally:
         cleanup_errors = len(errors)
-        if cid:
-            try:
-                call(["rm", "--force", cid])
-            except Exception as error:
-                errors.append(error)
-        try:
-            state = root / "state"
-            if state.exists() and any(p.name != ".rune-locks" for p in state.iterdir()):
-                errors.append(RuntimeError("runtime state remained after container cleanup"))
-            call(["unshare", "python3", "-c", "import shutil,sys; shutil.rmtree(sys.argv[1])", str(root)])
-        except Exception as error:
-            errors.append(error)
+        cleanup_report = finish_resources(root, runtime, call, errors,
+            Path(__file__).resolve().parents[1] / 'work/smoke-recovery')
         cases["cleanup"] = "pass" if len(errors) == cleanup_errors else "fail"
     if args.results:
-        args.results.write_text(json.dumps({"runtime_kind": args.runtime_kind, "cases": cases,
+        args.results.write_text(json.dumps({"runtime_kind": args.runtime_kind, "cases": cases, "cleanup": cleanup_report,
             "known_differences": ["process-file-policy", "process-file-conflict"],
             "gaps": ["apparmor-denial", "rootful", "architectures", "complete-conformance"]}, indent=2) + "\n")
     if errors:

@@ -20,7 +20,7 @@ def sha256(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=["exec", "numa", "numa-preflight"], default="exec")
+    parser.add_argument("--suite", choices=["exec", "numa", "numa-preflight", "podman"], default="exec")
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-dirty", action="store_true", help="development only; record no validated rune revision")
@@ -35,7 +35,8 @@ def main():
     subprocess.run(["bash", "scripts/build-local.sh"], cwd=ROOT, check=True)
     metadata = json.loads(subprocess.check_output(["cargo", "metadata", "--format-version", "1", "--no-deps", "--locked"], cwd=ROOT))
     rune = Path(metadata["target_directory"]) / "debug/rune"
-    suite = "exec-policy-smoke.py" if args.suite == "exec" else "numa-policy-smoke.py"
+    suite = {"exec": "exec-policy-smoke.py", "numa": "numa-policy-smoke.py",
+             "numa-preflight": "numa-policy-smoke.py", "podman": "podman-smoke.py"}[args.suite]
     report = {"format": 1, "suite": args.suite, "rune_revision": None if dirty else head,
               "development_base": head if dirty else None,
               "rune_binary_sha256": sha256(rune), "runc_revision": REFERENCE_REVISION,
@@ -48,6 +49,7 @@ def main():
               "image": "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15",
               "scope": "Rootless " + args.suite + " exec kernel subset; not complete conformance or parity.",
               "runtimes": {}, "comparisons": {}}
+    report["suite_auxiliary_sha256"] = {"smoke_cleanup.py": sha256(ROOT / "scripts/smoke_cleanup.py")}
     with tempfile.TemporaryDirectory(prefix="rune-exec-differential-") as directory:
         for kind, binary in (("runc", reference), ("rune", rune)):
             output = Path(directory) / (kind + ".json")
