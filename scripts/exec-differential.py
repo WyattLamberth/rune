@@ -20,7 +20,7 @@ def sha256(path):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=["exec", "numa"], default="exec")
+    parser.add_argument("--suite", choices=["exec", "numa", "numa-preflight"], default="exec")
     parser.add_argument("--reference", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--allow-dirty", action="store_true", help="development only; record no validated rune revision")
@@ -51,9 +51,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix="rune-exec-differential-") as directory:
         for kind, binary in (("runc", reference), ("rune", rune)):
             output = Path(directory) / (kind + ".json")
-            result = subprocess.run([sys.executable, str(ROOT / "scripts" / suite),
-                                     "--runtime", str(binary), "--runtime-kind", kind,
-                                     "--results", str(output)], cwd=ROOT, capture_output=True)
+            command = [sys.executable, str(ROOT / "scripts" / suite),
+                       "--runtime", str(binary), "--runtime-kind", kind,
+                       "--results", str(output)]
+            if args.suite == "numa-preflight":
+                command.append("--preflight")
+            result = subprocess.run(command, cwd=ROOT, capture_output=True)
             # Do not include subprocess logs, container IDs, paths or workload
             # output in the distributable aggregate record.
             report["runtimes"][kind] = {"exit_code": result.returncode,

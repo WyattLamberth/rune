@@ -50,3 +50,11 @@ evidence can justify replacing this adapter or reshaping the architecture.
 
 Nix pins are inherited from rmux. x86_64-linux and aarch64-linux are declared;
 architecture declarations do not establish successful builds on both machines.
+
+NUMA policy validation runs on the create snapshot before container acquisition
+and on the stored snapshot before tenant setup. The native syscall path uses the
+same bounded parser: sort and merge ranges before expanding unique node IDs,
+limit node IDs to the fixed CPU-set size used by pinned runc, and cap node text at
+the existing 4 MiB configuration limit. These checks bound expansion independently of the 4 MiB JSON limit.
+Validating policy
+is distinct from proving kernel enforcement across all NUMA modes and platforms.

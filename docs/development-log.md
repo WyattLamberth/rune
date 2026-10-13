@@ -261,3 +261,48 @@ allocation despite bounded JSON, with validation after acquisition. This separat
 urgent defect is #23 / RMU-35; do not claim complete NUMA support until bounded
 preflight and adversarial/failure evidence exist. Development MPOL_LOCAL init,
 direct/process-file exec and cleanup pass for rune and the pinned runc.
+
+## 2026-10-12 — Bound NUMA expansion and preflight policy (#23)
+
+Evidence: inspected the native memory-policy parser/history and #23/RMU-35.
+Small ranges could push billions of IDs; high single IDs could allocate enormous
+nodemasks. JSON byte bounds alone did not bound derived work. Pinned runc uses
+configs.ToCPUSet with a fixed unix.CPUSet-sized ID ceiling before conversion, so
+its known behavior provides a stricter existing reference bound.
+
+Decision: replace range-by-range expansion with a pure bounded node-set parser.
+Reject IDs beyond the fixed CPU-set-sized ceiling, cap text at the existing 4 MiB configuration limit, sort and
+merge intervals, then expand each unique node once. On the validated Linux amd64
+reference the ceiling is 1023. This replaces the initially considered 65535
+ceiling after upstream inspection found the tighter compatibility baseline.
+The backend exposes its complete existing mode/node/flag validator for create
+snapshot preflight and stored exec snapshot validation; actual native setup uses
+the same parser and validation. No syscall or filesystem access enters the core.
+
+Alternatives: checking only serialized size leaves range/mask expansion unbounded.
+Counting each repeated range's expansion could reject small duplicate sets and
+still do repeated work. Raising the ID bound beyond the pinned reference has no
+parity justification. Merging intervals bounds duplicate work without weakening
+requested policy. A considered 64 KiB text cap was replaced with the existing 4 MiB input
+bound: interval merging already bounds expansion, and the smaller text cap would
+add an unnecessary reference acceptance difference. Existing mode/flag rejection
+remains unchanged; textual acceptance still needs its full reference matrix.
+
+Tests exercise the actual production parser with malformed/overflow/giant IDs,
+text bounds, repeated full ranges, overlapping sets and bounded exhaustive range
+comparison. Adapter CLI tests check eight invalid policies produce errors without
+container ownership records. Stored exec preflight rejects hostile policy and
+accepts MPOL_LOCAL. An initial CLI fixture used the schema default development
+version and failed at version validation; it now explicitly requests pinned
+OCI 1.3 so assertions exercise NUMA rejection. Kernel differential and exact
+committed validation follow. No unsafe/dependency/lockfile changes. Broader NUMA
+modes, textual acceptance differences, denied kernels and concurrency remain gaps.
+
+Development validation: 29 workspace tests and warnings-denied Clippy pass,
+including CLI pre-acquisition rejection and stored exec checks. The rootless
+preflight differential adds safe invalid MPOL_LOCAL nodes, absent MPOL_BIND
+nodes and out-of-reference-range nodes, all failing with cleaned runtime state;
+it then exercises valid init/direct/process-file policy and cleanup. All five
+groups match in a dirty development run (no validated SHA). Giant ranges run only
+through the newly bounded parser/adapter tests, never through the old runtime.
+Patch reproduction passes against the checksum-pinned dependency archive.

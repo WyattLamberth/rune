@@ -32,3 +32,8 @@ can run with `rustc --test vendor/libcontainer/src/rootfs/selinux.rs`.
 Create rollback now retains ownership records if cgroup or RDT teardown fails.
 The shared production filesystem finalizer is exercised by workspace fault/retry
 tests; it does not establish kernel resource failure or concurrency coverage.
+
+NUMA policy uses a bounded production node parser with merged duplicate ranges,
+a fixed CPU-set-sized node-ID ceiling matching pinned runc, and the existing 4 MiB configuration text
+limit. Create and stored exec snapshots use the same policy preflight before
+container acquisition or tenant setup. These bounds do not prove exhaustive NUMA semantics.

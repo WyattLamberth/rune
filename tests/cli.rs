@@ -160,3 +160,59 @@ fn cleanup_metadata_rejects_oversized_files_symlinks_and_nonregular_inputs() {
         assert!(child.0.try_wait().unwrap().is_none());
     }
 }
+
+#[test]
+fn numa_policy_errors_do_not_create_container_ownership_records() {
+    let policies = [
+        serde_json::json!({"mode":"MPOL_BIND", "nodes":"0-4294967295"}),
+        serde_json::json!({"mode":"MPOL_BIND", "nodes":"4294967295"}),
+        serde_json::json!({"mode":"MPOL_BIND", "nodes":"0,".repeat(2_097_153)}),
+        serde_json::json!({"mode":"MPOL_BIND", "nodes":"2-1"}),
+        serde_json::json!({"mode":"MPOL_BIND"}),
+        serde_json::json!({"mode":"MPOL_LOCAL", "nodes":"1"}),
+        serde_json::json!({"mode":"MPOL_BIND", "nodes":"0", "flags":["MPOL_F_STATIC_NODES", "MPOL_F_RELATIVE_NODES"]}),
+        serde_json::json!({"mode":"MPOL_LOCAL", "flags":["MPOL_F_NUMA_BALANCING"]}),
+    ];
+    for policy in policies {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("state");
+        let bundle = temp.path().join("bundle");
+        fs::create_dir_all(bundle.join("rootfs")).unwrap();
+        let mut spec = serde_json::to_value(oci_spec::runtime::Spec::default()).unwrap();
+        spec["ociVersion"] = serde_json::json!("1.3.0");
+        spec["process"]["terminal"] = serde_json::json!(false);
+        spec["process"]["args"] = serde_json::json!(["/bin/true"]);
+        spec["linux"]["memoryPolicy"] = policy;
+        fs::write(
+            bundle.join("config.json"),
+            serde_json::to_vec(&spec).unwrap(),
+        )
+        .unwrap();
+        let id = format!(
+            "bounds-{}",
+            temp.path().file_name().unwrap().to_str().unwrap()
+        );
+        let result = Command::new(env!("CARGO_BIN_EXE_rune"))
+            .arg("--root")
+            .arg(&root)
+            .arg("create")
+            .arg("--bundle")
+            .arg(&bundle)
+            .arg(&id)
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        let error = String::from_utf8(result.stderr).unwrap();
+        assert!(
+            error.contains("node")
+                || error.contains("flag")
+                || error.contains("mode")
+                || error.contains("4 MiB")
+        );
+        assert!(result.stdout.is_empty());
+        assert!(
+            !root.join(&id).exists(),
+            "policy rejection created ownership records"
+        );
+    }
+}

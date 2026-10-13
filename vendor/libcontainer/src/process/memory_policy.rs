@@ -98,6 +98,15 @@ fn validate_memory_policy(
         return Ok(None);
     };
 
+    if policy
+        .nodes()
+        .as_ref()
+        .is_some_and(|nodes| nodes.len() > super::node_set::MAX_NODE_TEXT_BYTES)
+    {
+        return Err(MemoryPolicyError::InvalidNodes(
+            "NUMA node list exceeds 4 MiB supported limit".into(),
+        ));
+    }
     let base_mode = MemoryPolicyMode::from(policy.mode());
 
     let (flags_value, has_static, has_relative) = policy
@@ -244,6 +253,11 @@ fn validate_memory_policy(
     }
 }
 
+/// Validate bounded NUMA policy before acquiring container resources.
+pub fn check_memory_policy(policy: &Option<oci_spec::runtime::LinuxMemoryPolicy>) -> Result<()> {
+    validate_memory_policy(policy).map(|_| ())
+}
+
 /// Configure the memory policy for the process using set_mempolicy(2).
 ///
 /// See: https://man7.org/linux/man-pages/man2/set_mempolicy.2.html
@@ -300,53 +314,7 @@ fn build_nodemask(nodes: &str) -> Result<(Vec<libc::c_ulong>, u64)> {
 }
 
 fn parse_node_string(nodes: &str) -> Result<Vec<u32>> {
-    let mut node_ids = Vec::new();
-
-    // Trim whitespace and check for empty string
-    let nodes = nodes.trim();
-    if nodes.is_empty() {
-        return Ok(node_ids);
-    }
-
-    for range in nodes.split(',') {
-        let range = range.trim();
-        if range.is_empty() {
-            continue; // Skip empty entries caused by multiple commas
-        }
-
-        if let Some(dash_pos) = range.find('-') {
-            // Range format: "node1-node2"
-            let start_str = range[..dash_pos].trim();
-            let end_str = range[dash_pos + 1..].trim();
-
-            let start: u32 = start_str.parse().map_err(|_| {
-                MemoryPolicyError::InvalidNodes(format!("Invalid node range start: {}", start_str))
-            })?;
-            let end: u32 = end_str.parse().map_err(|_| {
-                MemoryPolicyError::InvalidNodes(format!("Invalid node range end: {}", end_str))
-            })?;
-
-            if start > end {
-                return Err(MemoryPolicyError::InvalidNodes(format!(
-                    "Invalid node range: {}-{}",
-                    start, end
-                )));
-            }
-
-            for node in start..=end {
-                node_ids.push(node);
-            }
-        } else {
-            // Single node
-            let node: u32 = range
-                .parse()
-                .map_err(|_| MemoryPolicyError::InvalidNodes(format!("Invalid node: {}", range)))?;
-
-            node_ids.push(node);
-        }
-    }
-
-    Ok(node_ids)
+    super::node_set::parse(nodes).map_err(MemoryPolicyError::InvalidNodes)
 }
 
 #[cfg(test)]

@@ -21,6 +21,7 @@ def main():
     parser.add_argument('--runtime-kind', choices=['rune', 'runc'], default='rune')
     parser.add_argument('--expect-exec', choices=['retained', 'missing'], default='retained')
     parser.add_argument('--results', type=Path)
+    parser.add_argument('--preflight', action='store_true', help='also test safe invalid policies and rollback')
     args = parser.parse_args()
     runtime = args.runtime.resolve(strict=True)
     binary_sha = hashlib.sha256(runtime.read_bytes()).hexdigest()
@@ -30,6 +31,8 @@ def main():
     # Podman prepares its ordinary rootless OCI bundle. The private fixture
     # adapter adds only the tested field before the native runtime reads it;
     # it forwards every invocation to that runtime and never executes workloads.
+    policy_file = root / 'policy.json'
+    policy_file.write_text(json.dumps({'mode': 'MPOL_LOCAL'}))
     wrapper = root / 'runtime'
     wrapper.write_text('#!/usr/bin/python3\nimport json,sys,os,pathlib\n'
         'args=sys.argv[1:]\n'
@@ -37,7 +40,7 @@ def main():
         ' i=args.index("--bundle") if "--bundle" in args else args.index("-b")\n'
         ' p=pathlib.Path(args[i+1])/"config.json"\n'
         ' spec=json.loads(p.read_text())\n'
-        ' spec["linux"]["memoryPolicy"]={"mode":"MPOL_LOCAL"}\n'
+        f' spec["linux"]["memoryPolicy"]=json.loads(pathlib.Path({str(policy_file)!r}).read_text())\n'
         ' p.write_text(json.dumps(spec))\n'
         f'os.execv({str(runtime)!r}, [{str(runtime)!r}]+args)\n')
     wrapper.chmod(0o700)
@@ -47,7 +50,9 @@ def main():
     errors = []
     cid = None
     cases = {case: 'not_run' for case in ['init-policy', 'direct-exec-policy', 'process-file-policy', 'cleanup']}
-    current = 'init-policy'
+    current = 'invalid-policy-rejection' if args.preflight else 'init-policy'
+    if args.preflight:
+        cases[current] = 'not_run'
     expected = 0 if args.expect_exec == 'retained' else 1
 
     def call(argv, timeout=45):
@@ -63,6 +68,21 @@ def main():
 
     try:
         call(['pull', IMAGE], timeout=180)
+        if args.preflight:
+            for policy in [{'mode': 'MPOL_LOCAL', 'nodes': '1'},
+                           {'mode': 'MPOL_BIND'}, {'mode': 'MPOL_BIND', 'nodes': '1024'}]:
+                policy_file.write_text(json.dumps(policy))
+                cid = call(['create', '--name', f'rune-numa-invalid-{uuid.uuid4().hex}',
+                            '--network', 'none', IMAGE, 'true'])
+                failed = subprocess.run(base + ['start', cid], capture_output=True, timeout=45)
+                assert failed.returncode != 0, 'invalid NUMA policy unexpectedly started'
+                state = root / 'state'
+                assert not state.exists() or not any(p.name != '.rune-locks' for p in state.iterdir()), 'invalid-policy rollback left state'
+                call(['rm', '--force', cid])
+                cid = None
+            cases[current] = 'pass'
+            current = 'init-policy'
+            policy_file.write_text(json.dumps({'mode': 'MPOL_LOCAL'}))
         cid = call(['create', '--name', f'rune-numa-{uuid.uuid4().hex}', '--network', 'none',
                     '--security-opt', 'no-new-privileges', IMAGE, 'sh', '-c',
                     'grep -q " local " /proc/self/numa_maps && exec sleep 120'])

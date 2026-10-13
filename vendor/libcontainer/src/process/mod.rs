@@ -11,5 +11,6 @@ pub mod init;
 pub mod intel_rdt;
 pub mod memory_policy;
 mod message;
+mod node_set;
 #[cfg(feature = "libseccomp")]
 mod seccomp_listener;

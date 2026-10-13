@@ -54,6 +54,9 @@ pub fn process(path: &Path) -> Result<Process> {
 }
 pub fn stored_process(container_dir: &Path) -> Result<Process> {
     let spec: Spec = read_json(&container_dir.join("rune-config.json"))?;
+    if let Some(linux) = spec.linux() {
+        libcontainer::process::memory_policy::check_memory_policy(linux.memory_policy())?;
+    }
     let process = spec
         .process()
         .as_ref()
@@ -91,6 +94,9 @@ pub fn bundle(path: &Path) -> Result<Spec> {
     {
         bail!("Intel RDT is not supported by rune's current cleanup contract");
     }
+    libcontainer::process::memory_policy::check_memory_policy(
+        spec.linux().as_ref().unwrap().memory_policy(),
+    )?;
     spec.canonicalize_rootfs(path)?;
     if !spec
         .root()
@@ -153,6 +159,31 @@ mod tests {
         assert!(bundle(dir.path()).is_err());
         spec.canonicalize_rootfs(dir.path())?;
         assert_eq!(frozen, spec);
+        Ok(())
+    }
+    #[test]
+    fn stored_exec_policy_is_checked_before_tenant_adaptation() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let mut spec = serde_json::to_value(Spec::default())?;
+        spec["linux"]["memoryPolicy"] = serde_json::json!({
+            "mode":"MPOL_BIND", "nodes":"0-4294967295"
+        });
+        std::fs::write(
+            dir.path().join("rune-config.json"),
+            serde_json::to_vec(&spec)?,
+        )?;
+        assert!(
+            stored_process(dir.path())
+                .unwrap_err()
+                .to_string()
+                .contains("unsupported")
+        );
+        spec["linux"]["memoryPolicy"] = serde_json::json!({"mode":"MPOL_LOCAL"});
+        std::fs::write(
+            dir.path().join("rune-config.json"),
+            serde_json::to_vec(&spec)?,
+        )?;
+        assert!(stored_process(dir.path()).is_ok());
         Ok(())
     }
     #[test]
