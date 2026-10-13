@@ -2,16 +2,24 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — cleanup metadata
+## Current increment — rollback ownership
 
-GitHub #17 / RMU-33, branch `codex/17-cleanup-metadata`, stacked on differential
-PR #19. Implementation `32a2c370cc695ce1a38d59a5cbd3bb5f45e7738f` requires
-bounded regular cleanup metadata before delete effects and retains ownership
-records on required cleanup failure. All local gates, 21 tests, general kernel
-smoke and pinned exec differential pass; exact evidence is in
-`docs/parity/validation/2026-10-12-cleanup-metadata.md`. The original intermittent
-failure remains unresolved. Next: retain records on failed create rollback, then
-improve harness cleanup errors and bounded failure diagnostics.
+GitHub #17 / RMU-33, branch `codex/17-rollback-ownership`, stacked on PR #20.
+Implementation `6b226888ed1b119ae4b0a2daba16fff62c65c435` retains acquisition
+records when create resource teardown fails. 24 workspace tests, all local Rust
+gates, 2 label tests, failed-create kernel suite, general Podman kernel smoke and
+pinned exec differential pass. Exact evidence is in
+`docs/parity/validation/2026-10-12-rollback-ownership.md`. Finish final-head
+validation and publish/attach PR; then improve general smoke cleanup failures and
+aggregate diagnostics or address audited exec NUMA policy loss under #14.
+
+## Prior increment — cleanup metadata
+
+PR #20, implementation `32a2c370cc695ce1a38d59a5cbd3bb5f45e7738f`, final head
+`34c118ab7b2f5d88b26160ae905337d66c10c4a1`, requires bounded regular metadata
+before delete effects and retains state on required teardown failure. Local gates
+and kernel suites pass; hosted Rust passes and Nix is still being reconciled.
+Original intermittent cleanup failure remains unresolved under #17.
 
 ## Prior increment — differential validation
 
@@ -64,14 +72,14 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach the cleanup PR after final-head checks and reconcile RMU-33.
-2. Fix create rollback ownership loss after resource cleanup errors under #17.
-   Then preserve smoke operation/cleanup failures together and bounded diagnostics.
+1. Publish/attach the rollback PR after final-head checks and reconcile RMU-33.
+2. Preserve smoke operation/cleanup failures together and bounded diagnostics.
+   Complete interrupted acquisition/resource failure/concurrency evidence under #17.
 3. Continue recognized OCI field semantic audit under #14/RMU-29 and expand
    signed differential/conformance coverage under #13/RMU-30. CLI #12 remains
    ordered behind security and validation evidence.
 
-PR train: alpha #10, baseline #15, exec #18, differential #19. All prior hosted
+PR train: alpha #10, baseline #15, exec #18, differential #19, cleanup #20. All earlier hosted
 Rust/Nix checks pass. Broader issues remain open; no complete parity claim.
 Check current Git/PR/Linear state before repeating or changing completed work.
 Ignored work holds private research inputs, reference assets, test diagnostics
