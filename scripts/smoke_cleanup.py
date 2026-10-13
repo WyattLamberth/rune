@@ -3,13 +3,16 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import shutil
 import stat
 import subprocess
+import time
 import uuid
 
 LIMIT = 32
 STATE_BYTES = 64 * 1024
+OUTPUT_BYTES = 4 * 1024 * 1024
 STATUSES = {'creating', 'created', 'running', 'paused', 'stopped'}
 
 
@@ -21,7 +24,35 @@ def public_error(error):
 
 def run_bounded(argv, timeout=45, text=False):
     try:
-        return subprocess.run(argv, capture_output=True, timeout=timeout, text=text)
+        with subprocess.Popen(argv, stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
+            try:
+                buffers = [bytearray(), bytearray()]
+                deadline = time.monotonic() + timeout
+                size = 0
+                with selectors.DefaultSelector() as selector:
+                    selector.register(process.stdout, selectors.EVENT_READ, 0)
+                    selector.register(process.stderr, selectors.EVENT_READ, 1)
+                    while selector.get_map():
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            raise RuntimeError('smoke subprocess timed out; details withheld')
+                        for key, _ in selector.select(remaining):
+                            chunk = os.read(key.fileobj.fileno(), 65536)
+                            if not chunk:
+                                selector.unregister(key.fileobj)
+                                continue
+                            size += len(chunk)
+                            if size > OUTPUT_BYTES:
+                                raise RuntimeError('smoke subprocess output exceeded bound; details withheld')
+                            buffers[key.data].extend(chunk)
+                process.wait(timeout=max(0, deadline - time.monotonic()))
+                output = [bytes(buffer) for buffer in buffers]
+                if text:
+                    output = [value.decode('utf-8') for value in output]
+                return subprocess.CompletedProcess(argv, process.returncode, *output)
+            finally:
+                if process.poll() is None:
+                    process.kill()
     except (subprocess.TimeoutExpired, OSError, UnicodeError):
         raise RuntimeError('smoke subprocess failed or timed out; details withheld') from None
 
@@ -69,7 +100,7 @@ def state_summary(root):
                                         if isinstance(value, dict):
                                             recorded = value.get('status')
                                             status = recorded if isinstance(recorded, str) and recorded in STATUSES else 'not-recorded'
-                        except (OSError, ValueError, TypeError):
+                        except (OSError, ValueError, TypeError, RecursionError):
                             pass
                     finally:
                         os.close(container_fd)

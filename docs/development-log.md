@@ -353,3 +353,36 @@ delete for unregistered retained state, then confirmed removal of private trees;
 stale locators whose trees were already absent were removed. No retained locator
 remains. Preserve this failed exact report locally and validate the corrected
 commit rather than treating the earlier run as a runtime regression.
+
+## 2026-10-13 — Bound smoke subprocess output and tolerate hostile diagnostics (#17)
+
+Evidence: reviewed cleanup helper introduction `24387ac95edce4485816dd5cfd8e56b1c115e5a4`,
+#17/RMU-33, original smoke history and the retained aggregate development results.
+The helper bounded subprocess duration but `capture_output` could retain unlimited
+stdout/stderr. Its bounded state-file read could still raise RecursionError on
+deep JSON, aborting diagnostic collection before the remaining cleanup attempts.
+This is a harness robustness increment, not an explanation of runtime leftovers.
+
+Decision: drain both subprocess streams with selectors and enforce a combined
+4 MiB byte ceiling before retaining further data. Use one monotonic deadline for
+pipe draining and process wait. Kill and reap the direct subprocess on failures;
+the existing private-store cleanup remains responsible for owned container
+resources. Preserve sanitized failure messages without command arguments or
+captured output. Treat recursive JSON as unreadable state, retaining ownership
+records through the existing cleanup path. No runtime, dependency, lockfile,
+core-policy or isolation changes.
+
+Alternatives: truncating output would let incomplete assertions appear valid.
+Checking output size after communicate would still allocate unbounded memory.
+Redirecting streams to files merely moves the unbounded resource to disk. Reject
+an oversized response explicitly and retain the cleanup/recovery contract.
+This runner does not claim to terminate arbitrary descendant process trees or
+prove kernel resource reclamation. Rootful, concurrency and interrupted
+acquisition acceptance remain open under #17/#13.
+
+Development validation: nine Python control/filesystem regressions pass,
+including an actual timed-out child, stderr overflow, both-stream exit handling
+and deeply nested state JSON. Formatting and architecture/inventory checks pass.
+The isolated worktree avoids concurrent edits by the other active rune chat.
+Rust and kernel exact-revision validation follow after the implementation commit;
+no dirty run is assigned an exact validated revision.
