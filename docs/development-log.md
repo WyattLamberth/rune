@@ -435,3 +435,14 @@ all three paths. The standalone differential records artifact/source/fixture
 hashes and the known FIFO timeout difference without logs or private paths.
 Development: 31 Rust tests and warnings-denied Clippy pass. Exact committed
 validation, isolated kernel regressions and a versioned compatibility record follow.
+
+Exact implementation `8c8c4e25d27971aa4769f80080b2d506c88d5599` passes all 31 Rust
+tests, formatting, warnings-denied Clippy, architecture/inventory and ten Python
+regressions. Standalone signed-reference differential shows four matching rejection
+outcomes and the documented FIFO policy difference. Rootless exec/NUMA and
+failed-create rollback regressions pass with their previous scoped results.
+Versioned evidence and the explicit parity conflict are recorded in
+`docs/parity/validation/2026-10-13-config-input.md`; current continuity and matrix
+notes retain the unresolved streaming obligation. AI-generated review confirms
+descriptor verification, regular-symlink compatibility, state preservation and
+prior decisions. Local Nix remains unavailable; verify hosted final-head checks.

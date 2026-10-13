@@ -1,8 +1,30 @@
 # Continuous rune work checkpoint
 
-Updated 2026-10-12; AI-generated engineering. Goal remains active.
+Updated 2026-10-13; AI-generated engineering. Goal remains active.
 
-## Current increment — bounded NUMA preflight
+## Current increment — nonregular JSON input (#27 / RMU-36)
+
+Branch codex/27-nonregular-config, stacked on PR #26. Exact implementation
+8c8c4e25d27971aa4769f80080b2d506c88d5599 uses nonblocking open and verifies the
+opened descriptor is regular before bounded JSON reads. Regular-file symlinks
+remain supported. 31 Rust tests, static gates, ten Python regressions,
+standalone input differential, focused exec/NUMA kernel differentials and
+failed-create rollback pass. Evidence: docs/parity/validation/2026-10-13-config-input.md.
+Runc streamed FIFO acceptance conflicts with rune's bounded-input requirement;
+that unresolved conflict prevents complete parity. Final evidence/publication
+checks follow; local Nix remains unavailable.
+
+## Prior increment — smoke output bounds (#17 / RMU-33)
+
+PR #26 final head dd06f7dc5f5d33a448f2b9e622cb8499edba21a5 passes hosted Rust/Nix,
+29 Rust tests, ten Python regressions, static gates and focused exec/NUMA checks.
+The broad differential retained one record in each runtime; later native queries
+reported stopped and explicit native deletion cleaned both private trees. Exact
+records remain committed. PR is ready for AI-generated review; original #17
+root cause and concurrency remain open. The other active rune chat continues
+broader cleanup investigation in its own checkout.
+
+## Prior increment — bounded NUMA preflight
 
 GitHub #23 / RMU-35, branch `codex/23-numa-bounds`, stacked on PR #24.
 Implementation `ce207b9df26a2e8f3d8ff8bbed8eb738505bc425` bounds node IDs/text,
@@ -90,15 +112,16 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach bounded NUMA PR after final checks; reconcile RMU-35.
-2. Repair general smoke cleanup errors and aggregate failure diagnostics under
-   #17; continue interrupted/resource failure/concurrent cleanup evidence.
-3. Review and integrate the coherent validated PR train under the delegated
-   mandate, preserving commit decisions and exact delivered-revision validation.
-4. Continue recognized OCI field audit #14 and differential/conformance #13;
-   expand source inventory into exhaustive semantic cases/configuration matrix.
+1. Finish final-head validation/publication for #27; retain the streamed-input
+   compatibility conflict and investigate compliant bounded streaming behavior.
+2. Reconcile the other active rune chat's #17 cleanup-ordering investigation before
+   working on it; root cause, interrupted acquisition and concurrency remain open.
+3. Review and integrate the validated PR train, preserving decisions and exact
+   delivered-revision evidence. Do not infer integration from green branch checks.
+4. Expand recognized-field audit #14 and exhaustive semantic/environment cases
+   under #11/#13. Zero source inventory entries are fully verified.
 
-PR train: alpha #10, baseline #15, exec #18, differential #19, cleanup #20,
-rollback #21, NUMA #24. All prior hosted Rust/Nix checks pass. No parity claim.
-Read current Git/PR/Linear state before repeating completed work. Private research
-inputs, source archive builds, reference assets and diagnostics remain ignored.
+The isolated branch used here is codex/27-nonregular-config. Inspect current Git,
+GitHub and Linear rather than relying on this checkpoint's commit pointers as
+final PR head. Private test resources and reference inputs stay ignored. All
+private recovery resources created by this chat are cleaned.
