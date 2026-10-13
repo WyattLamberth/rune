@@ -2,23 +2,32 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — rollback ownership
+## Current increment — NUMA exec policy
 
-GitHub #17 / RMU-33, branch `codex/17-rollback-ownership`, stacked on PR #20.
-Implementation `6b226888ed1b119ae4b0a2daba16fff62c65c435` retains acquisition
-records when create resource teardown fails. 24 workspace tests, all local Rust
-gates, 2 label tests, failed-create kernel suite, general Podman kernel smoke and
-pinned exec differential pass. Exact evidence is in
-`docs/parity/validation/2026-10-12-rollback-ownership.md`. Finish final-head
-validation and publish/attach PR; then improve general smoke cleanup failures and
-aggregate diagnostics or address audited exec NUMA policy loss under #14.
+GitHub #22 / RMU-34, branch `codex/22-exec-numa-policy`, stacked on PR #21.
+Implementation `8e6390df096fd310f371a6225650ffc7bbae225e` preserves stored
+NUMA memoryPolicy during tenant composition. 24 tests, Rust gates, label tests,
+NUMA and existing exec differentials pass at that clean revision. A fresh exact
+prior-revision archive build reproduces both exec forms losing MPOL_LOCAL; the
+candidate and pinned runc retain it. Exact evidence is in
+`docs/parity/validation/2026-10-12-numa-policy.md`. Publish after final checks.
+Next urgent increment: #23 / RMU-35 bounds node expansion and preflights policy.
+
+## Prior increment — rollback ownership
+
+PR #21 / GitHub #17 / RMU-33, implementation
+`6b226888ed1b119ae4b0a2daba16fff62c65c435`, final head
+`d2a7290ec3a7b715760f115addc8ffcf8dae9464`. All local checks and hosted Rust/Nix
+pass. Production finalizer retains records after resource errors and supports
+retry. Actual kernel resource failure, interrupted acquisition, concurrency and
+original intermittent root cause remain open.
 
 ## Prior increment — cleanup metadata
 
 PR #20, implementation `32a2c370cc695ce1a38d59a5cbd3bb5f45e7738f`, final head
 `34c118ab7b2f5d88b26160ae905337d66c10c4a1`, requires bounded regular metadata
 before delete effects and retains state on required teardown failure. Local gates
-and kernel suites pass; hosted Rust passes and Nix is still being reconciled.
+and kernel suites pass; hosted Rust/Nix pass.
 Original intermittent cleanup failure remains unresolved under #17.
 
 ## Prior increment — differential validation
@@ -72,15 +81,14 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach the rollback PR after final-head checks and reconcile RMU-33.
-2. Preserve smoke operation/cleanup failures together and bounded diagnostics.
-   Complete interrupted acquisition/resource failure/concurrency evidence under #17.
-3. Continue recognized OCI field semantic audit under #14/RMU-29 and expand
-   signed differential/conformance coverage under #13/RMU-30. CLI #12 remains
-   ordered behind security and validation evidence.
+1. Publish/attach NUMA exec PR after final checks; reconcile RMU-34.
+2. Implement #23 / RMU-35 bounded NUMA node parsing and preflight before
+   acquisition. Keep any explicit safety/compatibility limit visible.
+3. Improve general smoke cleanup errors and aggregate failure diagnostics under
+   #17, and expand interrupted/resource failure/concurrent cleanup evidence.
+4. Continue recognized OCI field audit #14 and differential/conformance #13.
 
-PR train: alpha #10, baseline #15, exec #18, differential #19, cleanup #20. All earlier hosted
-Rust/Nix checks pass. Broader issues remain open; no complete parity claim.
-Check current Git/PR/Linear state before repeating or changing completed work.
-Ignored work holds private research inputs, reference assets, test diagnostics
-and build artifacts. Preserve privacy and disposable resource boundaries.
+PR train: alpha #10, baseline #15, exec #18, differential #19, cleanup #20,
+rollback #21. All prior hosted Rust/Nix checks pass. No complete parity claim.
+Read current Git/PR/Linear state before repeating completed work. Private research
+inputs, source archive builds, reference assets and diagnostics remain ignored.

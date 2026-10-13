@@ -1,0 +1,25 @@
+{
+  "runtime_kind": "rune",
+  "binary_sha256": "ee8c42fa821afd22ec6e91bbae872aadc84fa6e741e3722c12fa978f59a57674",
+  "image": "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15",
+  "policy": "MPOL_LOCAL",
+  "expected_exec_policy": "missing",
+  "cases": {
+    "init-policy": "pass",
+    "direct-exec-policy": "pass",
+    "process-file-policy": "pass",
+    "cleanup": "pass"
+  },
+  "gaps": [
+    "other-NUMA-modes-and-flags",
+    "malformed-policy-preflight",
+    "denied-kernel-features",
+    "rootful",
+    "architectures",
+    "concurrency"
+  ],
+  "rune_revision": "d2a7290ec3a7b715760f115addc8ffcf8dae9464",
+  "source": "git archive of exact prior commit; fresh locked build",
+  "suite_sha256": "e7b32c8cd3784e5022d6c612d8b4387687dabe547e6462f1d8bad067a56570cc",
+  "scope": "Expected-loss reproduction: init retains MPOL_LOCAL; both exec forms lack it; cleanup passes."
+}
