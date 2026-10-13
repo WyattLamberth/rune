@@ -123,3 +123,41 @@ it remains GitHub #17 / RMU-33, not resolved by the later pass. No AppArmor deni
 full runc differential, complete cleanup or parity claim is made. Exact committed
 revision evidence follows in the validation record and PR. Baseline PR #15's
 hosted Rust/Nix checks passed at `d31afa97548e765ed1b1f46a5215d27c63c40487`.
+
+## 2026-10-12 — Establish the first signed-reference differential slice (#13)
+
+Evidence: read #13/RMU-30 and the exec design record, inspected the pinned runc
+release assets, verified the amd64 checksum and detached signature against its
+pinned source keyring, and checked reported revision/build provenance. The local
+reference reports v1.5.2 / `29dd3dc`, Go 1.26.8, libseccomp 2.6.1 and libpathrs
+0.2.6. It is an upstream release artifact; its build was not reproduced locally.
+Exec PR #18's hosted Rust/Nix checks passed at `79bfe9951944bd4870dacb68d31dead1df09d787`.
+
+Decision: start with a native direct-exec kernel slice using private disposable
+Podman resources and the same pinned image/assertions for both binaries. Refuse
+unknown reference hashes and dirty source for exact validation, build rune from
+the clean revision, record binary/lock/suite digests, and invalidate claims if
+source changes during the run. Save aggregate case classifications with explicit
+known differences and untested gaps; never save host/workload logs in the record.
+Reference preparation uses disposable GPG settings and does not install globally.
+
+Alternatives: waiting for a full source-built toolchain would delay useful
+differential evidence; a signed pinned release artifact establishes an initial
+reference with explicit provenance limits. Running the entire upstream suite
+unmodified would introduce fixed IDs and shared-host assumptions. Reporting all
+successful expected outcomes as parity would hide intentional differences.
+
+Development runs matched direct policy, overrides, init identity and cleanup
+assertions. They also disproved the source-only expectation that runc would apply
+the original file limit to an omitted process-file rlimit: actual exec retained
+its parent's limit. Omitted no-new-privileges was false. Rune retains both
+original policies. The runner now tests those observed differences explicitly;
+this corrects the earlier incomplete source inference without fabricating prior
+evidence. Ignored process-file overrides remain another known difference.
+The initial failed development comparison is retained locally with validation
+gaps; no exact revision is attributed to uncommitted development results.
+
+Next obligations: commit and run the exact-revision slice, then expand security
+denial/failure/concurrency cases and the source-built/conformance environment
+matrix. Resolve policy/compatibility differences through compliant design and
+evidence. No complete parity or exhaustive semantic coverage claim.

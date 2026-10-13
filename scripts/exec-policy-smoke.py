@@ -4,15 +4,20 @@ import argparse
 import json
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 IMAGE = "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15"
 
 
 def main():
+    if sys.flags.optimize:
+        raise SystemExit("validation requires Python assertions enabled")
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runtime", type=Path, required=True)
     parser.add_argument("--image", default=IMAGE)
+    parser.add_argument("--runtime-kind", choices=["rune", "runc"], default="rune")
+    parser.add_argument("--results", type=Path, help="write aggregate case outcomes without workload output")
     args = parser.parse_args()
     runtime = args.runtime.resolve(strict=True)
     root = Path(tempfile.mkdtemp(prefix="rune-exec-policy-"))
@@ -21,6 +26,9 @@ def main():
             "--runtime-flag", f"root={root}/state"]
     cid = None
     errors = []
+    case_ids = ["direct-policy", "explicit-overrides", "process-file-policy", "process-file-conflict", "init-identity", "cleanup"]
+    cases = {case: "not_run" for case in case_ids}
+    current = "direct-policy"
 
     def call(argv, timeout=45):
         result = subprocess.run(base + argv, capture_output=True, text=True, timeout=timeout)
@@ -53,22 +61,36 @@ def main():
         expected_label = info.get("ProcessLabel")
         if expected_label:
             assert output[7].rstrip("\0") == expected_label, "SELinux exec label changed"
+        cases[current] = "pass"
         print("PASS direct exec user/group/cwd/rlimit/environment/capabilities/privilege policy", flush=True)
+        current = "explicit-overrides"
         overridden = direct(["--env", "RUNE_EXEC_TEST=first", "--env", "RUNE_EXEC_TEST=last",
                              "--cwd", "/", cid, "/bin/sh", "-c", 'pwd; printf "%s\\n" "$RUNE_EXEC_TEST"'])
         assert overridden.splitlines() == ["/", "last"], "explicit overrides changed"
+        cases[current] = "pass"
+        current = "process-file-policy"
         process = root / "process.json"
         process.write_text(json.dumps({"user": {"uid": 1234, "gid": 1235}, "cwd": "/tmp",
                                        "env": ["PATH=/bin"], "args": ["/bin/sh", "-c", "ulimit -n; grep NoNewPrivs: /proc/self/status"]}))
         inherited = direct(["--process", str(process), cid]).splitlines()
-        assert inherited[0] == "128" and inherited[1].split()[1] == "1", "process-file policy fallback changed"
-        direct(["--process", str(process), "--cwd", "/", cid], expected=1)
+        expected_nnp = "1" if args.runtime_kind == "rune" else "0"
+        parent_limit = call(["unshare", "python3", "-c", "import resource;print(resource.getrlimit(resource.RLIMIT_NOFILE)[0])"])
+        expected_limit = "128" if args.runtime_kind == "rune" else parent_limit
+        assert inherited[0] == expected_limit and inherited[1].split()[1] == expected_nnp, "process-file policy fallback changed"
+        cases[current] = "pass"
+        current = "process-file-conflict"
+        direct(["--process", str(process), "--cwd", "/", cid], expected=1 if args.runtime_kind == "rune" else 0)
+        cases[current] = "pass"
         print("PASS explicit overrides, process-file inheritance and conflicting-option rejection", flush=True)
         after = json.loads(call(["inspect", cid]))[0]
+        current = "init-identity"
         assert after["State"]["Pid"] == info["State"]["Pid"], "exec changed init identity"
+        cases[current] = "pass"
     except Exception as error:
+        cases[current] = "fail"
         errors.append(error)
     finally:
+        cleanup_errors = len(errors)
         if cid:
             try:
                 call(["rm", "--force", cid])
@@ -81,6 +103,11 @@ def main():
             call(["unshare", "python3", "-c", "import shutil,sys; shutil.rmtree(sys.argv[1])", str(root)])
         except Exception as error:
             errors.append(error)
+        cases["cleanup"] = "pass" if len(errors) == cleanup_errors else "fail"
+    if args.results:
+        args.results.write_text(json.dumps({"runtime_kind": args.runtime_kind, "cases": cases,
+            "known_differences": ["process-file-policy", "process-file-conflict"],
+            "gaps": ["apparmor-denial", "rootful", "architectures", "complete-conformance"]}, indent=2) + "\n")
     if errors:
         raise ExceptionGroup("exec policy validation or cleanup failed", errors)
     print("PASS init identity and disposable resource cleanup", flush=True)
