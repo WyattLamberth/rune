@@ -26,6 +26,28 @@ class CleanupTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('assertions enabled', result.stderr)
 
+    def test_enumeration_requests_full_ids_before_owned_removal(self):
+        with tempfile.TemporaryDirectory(prefix='rune-smoke-ids-') as directory:
+            root = Path(directory) / 'owned'
+            root.mkdir()
+            active = True
+            errors = []
+            def call(args):
+                nonlocal active
+                if args[0] == 'ps':
+                    self.assertIn('--no-trunc', args)
+                    return 'a' * 64 if active else ''
+                if args[0] == 'rm':
+                    self.assertEqual(args[-1], 'a' * 64)
+                    active = False
+                else:
+                    root.rmdir()
+                return ''
+            finish_resources(root, Path('/synthetic-runtime'), call, errors, Path(directory) / 'recovery')
+            self.assertFalse(errors)
+            self.assertFalse(active)
+            self.assertFalse(root.exists())
+
     def test_operation_and_cleanup_errors_survive_and_records_are_retained(self):
         with tempfile.TemporaryDirectory(prefix='rune-smoke-fault-') as directory:
             temp = Path(directory)

@@ -343,3 +343,13 @@ would change the assertion without proving the expected asynchronous contract.
 Retain the strict assertion and gather exact clean-revision evidence next. The
 broader Podman comparison remains a validation gap until explained. No runtime
 policy, unsafe code, dependencies, lockfiles or isolation settings changed.
+
+Exact validation at `24387ac95edce4485816dd5cfd8e56b1c115e5a4` exposed a harness
+contract defect: Podman ps defaults to shortened IDs, while the safe cleanup
+validator requires full IDs. The helper rejected enumeration and retained the
+owned containers; this is not runtime cleanup evidence. Request --no-trunc and
+add an eighth fault/contract test. Recovery used full private IDs and native
+delete for unregistered retained state, then confirmed removal of private trees;
+stale locators whose trees were already absent were removed. No retained locator
+remains. Preserve this failed exact report locally and validate the corrected
+commit rather than treating the earlier run as a runtime regression.

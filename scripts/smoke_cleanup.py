@@ -103,7 +103,7 @@ def finish_resources(root, runtime, call, errors, recovery_directory):
     except OSError:
         errors.append(RuntimeError('cannot inspect owned runtime state; details withheld'))
     try:
-        identifiers = call(['ps', '--all', '--format', '{{.ID}}']).splitlines()
+        identifiers = call(['ps', '--all', '--no-trunc', '--format', '{{.ID}}']).splitlines()
         if len(identifiers) > LIMIT or any(not re.fullmatch('[0-9a-f]{64}', identifier) for identifier in identifiers):
             raise RuntimeError('unexpected owned-container enumeration')
         for identifier in identifiers:
@@ -111,7 +111,7 @@ def finish_resources(root, runtime, call, errors, recovery_directory):
                 call(['rm', '--force', identifier])
             except Exception as error:
                 errors.append(public_error(error))
-        if call(['ps', '--all', '--format', '{{.ID}}']):
+        if call(['ps', '--all', '--no-trunc', '--format', '{{.ID}}']):
             errors.append(RuntimeError('owned containers remained after cleanup'))
     except Exception as error:
         errors.append(public_error(error))
