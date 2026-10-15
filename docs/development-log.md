@@ -487,3 +487,15 @@ complete. Existing capability and no-new-privileges probes already exercise init
 The conditional SELinux domain assertion is not exhaustive MCS/denial evidence;
 seccomp mode 2 proves filter installation, not all policy actions. Preserve those
 limits in the final record. This changes validation only, not runtime semantics.
+
+Combined candidate db3685c passes 31 Rust tests, ten Python fault tests, two label
+tests, all static gates, input/exec/NUMA comparisons and failed-create rollback.
+The checksum-pinned dependency patch exactly reproduces 73 Rust/TOML files.
+Release candidate 300fc4c passes the complete disposable rootless alpha smoke,
+including newly explicit init security and conditional SELinux results (both
+init/exec domain checks ran and passed), plus confirmed cleanup. These are exact
+scoped results, not complete conformance, denial, concurrency or recovery proof.
+Versioned aggregate records and combined AI-generated review are in
+`docs/parity/validation/2026-10-14-integration.md`. Final-head/hosted gates and the
+actual main delivery revision must be checked and recorded before calling this
+increment delivered. Earlier failing cleanup records and all broader gaps remain.

@@ -130,8 +130,9 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Finish exact candidate validation and integration into main under #30; record
-   the delivered revision, close superseded PRs and update Linear honestly.
+1. Inspect main and GitHub #30/integration PR for the actual delivery revision
+   and final checks. Finish only unmet integration gates; do not repeat a landed
+   integration. Reconcile the superseded stack and Linear to authoritative state.
 2. Resume #31 PID-file atomic publication/failure rollback, then native run
    parity; preserve cleanup failures rather than falsely reporting success.
 3. Reconcile the other active rune chat's #17 tracing before touching that work.
