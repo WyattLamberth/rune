@@ -353,3 +353,68 @@ delete for unregistered retained state, then confirmed removal of private trees;
 stale locators whose trees were already absent were removed. No retained locator
 remains. Preserve this failed exact report locally and validate the corrected
 commit rather than treating the earlier run as a runtime regression.
+
+## 2026-10-13 — Bound smoke subprocess output and tolerate hostile diagnostics (#17)
+
+Evidence: reviewed cleanup helper introduction `24387ac95edce4485816dd5cfd8e56b1c115e5a4`,
+#17/RMU-33, original smoke history and the retained aggregate development results.
+The helper bounded subprocess duration but `capture_output` could retain unlimited
+stdout/stderr. Its bounded state-file read could still raise RecursionError on
+deep JSON, aborting diagnostic collection before the remaining cleanup attempts.
+This is a harness robustness increment, not an explanation of runtime leftovers.
+
+Decision: drain both subprocess streams with selectors and enforce a combined
+4 MiB byte ceiling before retaining further data. Use one monotonic deadline for
+pipe draining and process wait. Kill and reap the direct subprocess on failures;
+the existing private-store cleanup remains responsible for owned container
+resources. Preserve sanitized failure messages without command arguments or
+captured output. Treat recursive JSON as unreadable state, retaining ownership
+records through the existing cleanup path. No runtime, dependency, lockfile,
+core-policy or isolation changes.
+
+Alternatives: truncating output would let incomplete assertions appear valid.
+Checking output size after communicate would still allocate unbounded memory.
+Redirecting streams to files merely moves the unbounded resource to disk. Reject
+an oversized response explicitly and retain the cleanup/recovery contract.
+This runner does not claim to terminate arbitrary descendant process trees or
+prove kernel resource reclamation. Rootful, concurrency and interrupted
+acquisition acceptance remain open under #17/#13.
+
+Development validation: nine Python control/filesystem regressions pass,
+including an actual timed-out child, stderr overflow, both-stream exit handling
+and deeply nested state JSON. Formatting and architecture/inventory checks pass.
+The isolated worktree avoids concurrent edits by the other active rune chat.
+Rust and kernel exact-revision validation follow after the implementation commit;
+no dirty run is assigned an exact validated revision.
+
+Validation and integration record: rebased the narrow output/JSON change onto
+`7a609bc`, which independently corrects full-ID enumeration. Exact clean
+implementation `aa2581ae1e6b65bfc94518a22f8658fecb7b58f4` passes ten Python
+regressions, 29 Rust tests, formatting, warnings-denied Clippy, architecture and
+inventory integrity, focused exec/NUMA differentials and failed-create rollback.
+The broad differential retains one record in each runtime at cleanup-check;
+subsequent native queries report stopped and direct deletion recovers both
+private trees. Preserve this failure as a gap, not a claimed root cause. Local
+Nix validation is unavailable because nix is not installed. AI-generated review
+inspected history, production helper bounds, cleanup preservation and delivery
+context. Exact aggregate evidence and continuation obligations are recorded in
+`docs/parity/validation/2026-10-13-smoke-output-bounds.md`. The branch is isolated
+from the other active rune chat; ongoing ownership selection is pending.
+
+## 2026-10-14 — Reconcile completed smoke bounds before cleanup tracing (#17)
+
+The separate active chat completed PR #26 at
+`dd06f7dc5f5d33a448f2b9e622cb8499edba21a5` and is implementing #27 in its own
+worktree. This chat continues #17 in the primary checkout. Merge the completed
+4 MiB subprocess-output cap and recursive-state JSON handling into the cleanup
+trace branch, retaining both histories and validation/decision records. Do not
+modify the other active worktree or repeat its input-validation implementation.
+
+Pinned Podman source's CreateExitCommandArgs preserves the runtime executable
+but does not serialize per-invocation --runtime-flag arguments. Earlier fixtures
+used that option for the private runtime root. This is a concrete candidate
+explanation for sporadic retained state: the conmon cleanup command may target a
+different root, and ContainerRun can discard its removal error while preserving
+workload exit status. Verify actual requests before attributing the original
+failure. The next fixture must guard private scope before invoking native runtime
+commands, preserving PID/FD behavior and every isolation check.

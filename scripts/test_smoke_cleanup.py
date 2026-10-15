@@ -7,18 +7,31 @@ import subprocess
 import sys
 import unittest
 
-from smoke_cleanup import finish_resources, state_summary, run_bounded, LIMIT, STATE_BYTES
+from smoke_cleanup import finish_resources, state_summary, run_bounded, LIMIT, STATE_BYTES, OUTPUT_BYTES
 from unittest.mock import patch
 
 
 class CleanupTests(unittest.TestCase):
     def test_subprocess_timeout_withholds_arguments_and_output(self):
-        failure = subprocess.TimeoutExpired(['private-path', 'private-id'], 1, output='private-workload')
-        with patch('smoke_cleanup.subprocess.run', side_effect=failure):
-            with self.assertRaises(RuntimeError) as caught:
-                run_bounded(['private-path'])
+        with self.assertRaises(RuntimeError) as caught:
+            run_bounded([sys.executable, '-c', 'import time; print("private-workload", flush=True); time.sleep(5)',
+                         'private-id'], timeout=0.1)
         for private in ['private-path', 'private-id', 'private-workload']:
             self.assertNotIn(private, str(caught.exception))
+
+    def test_subprocess_output_bound_and_both_streams(self):
+        with self.assertRaisesRegex(RuntimeError, 'output exceeded bound'):
+            run_bounded([sys.executable, '-c', f'import sys; sys.stderr.write("x" * {OUTPUT_BYTES + 1})'])
+        result = run_bounded([sys.executable, '-c', 'import sys; print("out"); print("err", file=sys.stderr); sys.exit(23)'], text=True)
+        self.assertEqual((result.returncode, result.stdout, result.stderr), (23, 'out\n', 'err\n'))
+
+    def test_deep_json_is_unreadable_and_does_not_abort_cleanup(self):
+        with tempfile.TemporaryDirectory(prefix='rune-smoke-deep-') as directory:
+            root = Path(directory)
+            entry = root / 'state' / 'synthetic'
+            entry.mkdir(parents=True)
+            (entry / 'state.json').write_text('[' * 2000 + ']' * 2000)
+            self.assertEqual(state_summary(root)['statuses'], {'unreadable': 1})
 
     def test_optimized_python_cannot_skip_general_kernel_assertions(self):
         result = subprocess.run([sys.executable, '-O', str(Path(__file__).with_name('podman-smoke.py'))],
