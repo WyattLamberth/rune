@@ -537,3 +537,11 @@ Published observations contain only hook ordinal, boolean directory/state-field
 presence and standard status; no IDs, paths or contents. No unsafe, dependencies,
 lockfiles or isolation changes. The dependency patch reproduces the pinned
 package. Exact committed validation follows.
+
+Exact implementation `46effbc48f66c11a6b4e1e3a855e7a6786622285` passes the
+committed two-hook kernel comparison: deletion ordering matches; the failure
+exit, skipped second hook and OCI conflict remain explicit. Live metadata faults,
+restore/retry and general comparison pass with no retained private resources.
+30 Rust and 14 Python tests plus static gates pass. See the dated poststop
+validation record. AI-generated review checked final history, superseded #17
+rationale, patch reproduction and limited claims; timeout/continuation remains open.

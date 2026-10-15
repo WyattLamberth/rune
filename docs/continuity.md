@@ -1,20 +1,21 @@
 # Continuous rune work checkpoint
 
-Updated 2026-10-12; AI-generated engineering. Goal remains active.
+Updated 2026-10-14; AI-generated engineering. Goal remains active.
 
 ## Current checkpoint — poststop contract investigation
 
-Primary checkout is now on clean branch `codex/35-poststop-contract`, based on
-completed #34 / RMU-39 increment published as PR #36 (stacked on #33).
-Implementation `8d8b4a46419463a9daa29374af99fcd543543f2b` adds internal
-Absent/Noop production policy, no adapter invocation for forced full absence,
-and preserves all partial/corrupt/nonregular ownership errors. 30 Rust tests,
-static gates, default/seed-42 100000-step replay, standalone reference comparison,
-live metadata faults/restore/retry and general kernel comparison pass. Evidence:
-`docs/parity/validation/2026-10-14-force-absence.md`. Final PR head
-`ca9e25b357bd7fa4eb18808eb17d1a26c6190e99` also passes Rust/static, standalone
-absence comparison and live metadata cleanup. Hosted CI is pending. No active
-test process or retained resource remains. No hook implementation change yet.
+Primary checkout is on `codex/35-poststop-contract`. Implementation
+`46effbc48f66c11a6b4e1e3a855e7a6786622285` removes successfully destroyed state
+before poststop hooks. Exact two-hook kernel comparison, metadata fault/retry,
+general kernel comparison and Rust/static gates pass. Evidence:
+`docs/parity/validation/2026-10-14-poststop.md`. Both runtimes still stop at the
+first failed hook and return an error, contrary to OCI continuation requirements.
+Issue #35 / RMU-40 stays open. Hook timeout/backpressure is the next investigation.
+PR publication and final head checks follow. No retained test resources remain.
+
+Prior #34 / RMU-39 is published in PR #36 at
+`ca9e25b357bd7fa4eb18808eb17d1a26c6190e99`; hosted Rust/Nix pass. Fully absent
+forced deletion is a production no-op. Partial/corrupt ownership errors remain.
 
 ## Prior increment — callback runtime-root binding
 
@@ -34,11 +35,10 @@ The histories are reconciled in this branch.
 
 ## Parallel existing work
 
-The other active “Read Codex goal objective” chat is implementing #27 / RMU-36
-on branch `codex/27-nonregular-config` in its isolated worktree. Keep this chat
-on #17 and the primary checkout; do not modify its active worktree. Inspect its
-PR/current state before later integration. No cross-chat message authorization
-has been requested or assumed.
+The other active “Read Codex goal objective” chat integrated alpha/hardening
+via merged PR #32 and is handling separate #31 PID-file publication/rollback.
+Do not modify its worktree. Reconcile main and open #33/#36 before integration;
+do not send cross-chat messages without human authorization.
 
 ## Prior increment — bounded NUMA preflight
 
@@ -124,14 +124,12 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Reconcile PR #36 hosted CI; it is published/attached and RMU-39 is In Review.
-2. Establish a two-hook kernel differential under #35 / RMU-40: OCI poststop
-   warning/remaining-hook continuation disagrees with pinned reference handling.
-   Preserve errors and record a compliant compatibility design before changing it.
-3. Continue #17 kernel resource failures, interrupted acquisition and concurrency.
-4. Reconcile latest main/other active chat before integration. It integrated the
-   alpha/hardening in PR #32 and handles separate implementation work. Keep own
-   branch/checkouts isolated and do not send cross-chat messages without authority.
+1. Publish/review the poststop ordering increment, keeping #35's OCI/reference
+   conflict and timeout scope open.
+2. Reproduce hook stdin backpressure against configured timeout, then fix proven
+   deadline/reaping gaps without unsafe code or discarded cleanup errors.
+3. Continue #17 resource failures, interrupted acquisition and concurrency.
+4. Reconcile current main/other chat before integration of open #33/#36.
 
 Full parity remains unproven and goal active. Inspect current Git/PR/Linear and
 private recovery locators; no retained test resource remains at this validation.
