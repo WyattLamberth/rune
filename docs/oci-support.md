@@ -23,6 +23,7 @@ conformance claim.
 | Hooks | Delegated to native backend | Spec ordering/failure/timeout conformance not yet established |
 | Annotations | Preserved as metadata | Opt-in backend debug logs can include metadata; telemetry absent |
 | Intel RDT | Rejected before resource setup | Cleanup contract not implemented |
+| PID files | Atomic replacement; failed publication aborts create/exec and rolls back the owned child | Filesystem/owned-process tests and rootless create/exec failures; unconfirmed rollback blocks lifecycle commands; automatic recovery and full fault/concurrency coverage open |
 | CLI gaps | Reject no-new-keyring, ignore-paused, direct exec --tty without process file | Unknown CLI flags fail; standalone run/spec/features pending |
 | Other platforms | Rejected platform config | Linux only; aarch64 declared in Nix but execution unverified |
 

@@ -50,3 +50,14 @@ negative/unrepresentable deadlines fail before spawning. See issue #38. No
 unsafe code or new dependency is introduced; libc/nix remains a maintained
 adapter dependency trust boundary. Descendant process groups are not proven
 cleaned up by this direct-child change.
+
+Requested PID files are published through a synchronized random temporary file
+and atomic rename after readiness, before returning create or releasing exec.
+Failure terminates/reaps only a proven owned child through a pidfd; incomplete
+process/temp/socket rollback retains private recovery ownership and prevents
+further lifecycle commands. Automatic reconciliation of that exceptional record
+is not implemented. Full syscall-fault/crash/concurrency coverage remains #31/#17.
+
+Regenerate the minimal source patch with `python3 scripts/backend-patch.py --write`
+and verify it with `--check`. The helper checks the upstream crate checksum and
+uses its local Cargo cache archive, or an explicit `--archive PATH`.

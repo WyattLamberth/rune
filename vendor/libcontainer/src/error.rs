@@ -73,6 +73,9 @@ pub enum LibcontainerError {
     #[error(transparent)]
     IntelRdt(#[from] crate::process::intel_rdt::IntelRdtError),
 
+    #[error("{message}")]
+    PidPublication { message: String, retain_ownership: bool },
+
     // Catch all errors that are not covered by the above
     #[error("syscall error")]
     OtherSyscall(#[source] nix::Error),

@@ -60,6 +60,15 @@ fn lock(root: &Path, id: &str) -> Result<Flock<File>> {
 fn load(root: &Path, id: &str) -> Result<Container> {
     check_id(id)?;
     let container = Container::load(root.join(id))?;
+    // A failed rollback must retain its single recovery marker and ownership state.
+    // Native per-container locking prevents another acquisition while it exists.
+    match std::fs::symlink_metadata(root.join(id).join("rune-pidfile-recovery.json")) {
+        Ok(_) => bail!(
+            "PID-file rollback ownership requires explicit recovery before lifecycle commands"
+        ),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(error) => return Err(error.into()),
+    }
     if container.id() != id {
         bail!("stored container ID does not match requested ID");
     }

@@ -81,7 +81,9 @@ is not a claim that every field is implemented. Unknown fields are rejected;
 Intel RDT, `--no-new-keyring`, direct `exec --tty` without a process file, and
 `--ignore-paused` are rejected. Full feature negotiation, standalone run/spec,
 reproducible performance baselines, telemetry, and release artifacts remain backlog work.
-PID-file publication errors are not reliably propagated yet (#31), and streamed
+PID files are published atomically; publication failure rolls back the new owned
+process. Unconfirmed rollback retains recovery state and blocks lifecycle commands;
+automated recovery and broader fault/concurrency coverage remain #31/#17. Streamed
 nonregular JSON rejection remains a compatibility/policy conflict (#27).
 Poststop warning/continuation conflicts with the pinned runc baseline and OCI
 requirements (#35); hook descendants and concurrent callback attribution remain

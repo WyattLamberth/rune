@@ -393,3 +393,32 @@ fn forced_absence_is_idempotent_but_partial_or_nonregular_ownership_is_not() {
     assert_eq!(fs::read(file).unwrap(), b"retain");
     assert!(root.path().join("link").is_symlink());
 }
+
+#[test]
+fn unconfirmed_pidfile_rollback_retains_ownership_and_blocks_lifecycle_effects() {
+    let temp = tempfile::tempdir().unwrap();
+    let mut child = OwnedProcess(Command::new("sleep").arg("30").spawn().unwrap());
+    fixture(temp.path(), child.0.id(), starttime(child.0.id()));
+    let recovery = temp.path().join("test/rune-pidfile-recovery.json");
+    fs::write(&recovery, "synthetic recovery ownership").unwrap();
+    for args in [
+        vec!["delete", "--force", "test"],
+        vec!["kill", "test", "KILL"],
+        vec!["start", "test"],
+    ] {
+        let result = Command::new(env!("CARGO_BIN_EXE_rune"))
+            .arg("--root")
+            .arg(temp.path())
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(!result.status.success());
+        assert!(
+            String::from_utf8(result.stderr)
+                .unwrap()
+                .contains("explicit recovery")
+        );
+        assert!(child.0.try_wait().unwrap().is_none());
+        assert!(recovery.exists());
+    }
+}

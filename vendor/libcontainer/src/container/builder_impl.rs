@@ -75,7 +75,7 @@ impl ContainerBuilderImpl {
             Err(outer) => {
                 // Only the init container should be cleaned up in the case of
                 // an error.
-                let cleanup_err = if self.is_init_container() {
+                let cleanup_err = if self.is_init_container() && !matches!(&outer, LibcontainerError::PidPublication { retain_ownership: true, .. }) {
                     self.cleanup_container().err()
                 } else {
                     None
@@ -189,7 +189,6 @@ impl ContainerBuilderImpl {
             stdout: self.stdout.as_ref().map(|x| x.as_raw_fd()),
             stderr: self.stderr.as_ref().map(|x| x.as_raw_fd()),
             as_sibling: self.as_sibling,
-            pid_file: self.pid_file.to_owned(),
         };
 
         let init_pid = process::container_main_process::container_main_process(&container_args)
@@ -222,6 +221,49 @@ impl ContainerBuilderImpl {
                 .save()?;
         }
 
+        // Both init and tenant are ready but remain behind their start barrier.
+        // Publish only after readiness and init ownership state have been saved.
+        if let Some(path) = &self.pid_file {
+            if let Err(publication) = process::pid_file::publish(path, init_pid.as_raw()) {
+                let rollback = process::owned_process::terminate_and_reap(init_pid);
+                let socket_cleanup = if rollback.is_ok() && !self.is_init_container() {
+                    match fs::remove_file(&self.notify_path) {
+                        Ok(()) => None,
+                        Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                        Err(error) => Some(error),
+                    }
+                } else { None };
+                let retain_ownership = publication.cleanup_failed || rollback.is_err() || socket_cleanup.is_some();
+                let mut message = format!("PID-file publication failed: {publication}");
+                if let Err(error) = rollback {
+                    message.push_str(&format!("; process rollback failed: {error}"));
+                }
+                if let Some(error) = socket_cleanup {
+                    message.push_str(&format!("; cannot remove exec notify socket: {error}"));
+                }
+                if retain_ownership {
+                    // Do not erase acquisition evidence on unconfirmed rollback.
+                    // The init state stays intact; exec records never replace it.
+                    let record = (|| -> Result<(), String> {
+                        let root = &self.container.as_ref().ok_or("missing recovery container")?.root;
+                        let starttime = procfs::process::Process::new(init_pid.as_raw()).ok()
+                            .and_then(|process| process.stat().ok()).map(|stat| stat.starttime);
+                        let bytes = serde_json::to_vec(&serde_json::json!({
+                            "pid": init_pid.as_raw(), "observed_starttime": starttime,
+                            "status": "rollback_unconfirmed", "error": message
+                        })).map_err(|error| error.to_string())?;
+                        process::pid_file::publish_bytes(
+                            &root.join("rune-pidfile-recovery.json"),
+                            &bytes, 0o600,
+                        ).map_err(|error| error.message)
+                    })();
+                    if let Err(error) = record {
+                        message.push_str(&format!("; cannot persist recovery ownership: {error}"));
+                    }
+                }
+                return Err(LibcontainerError::PidPublication { message, retain_ownership });
+            }
+        }
         Ok(init_pid)
     }
 

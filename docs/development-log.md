@@ -792,3 +792,70 @@ eight signed-reference logging cases per runtime, and release rootless Podman
 smoke with both SELinux domain checks and cleanup. Aggregate evidence and
 AI-generated review limits are in `docs/parity/validation/2026-10-14-logging.md`.
 Final documentation revision and hosted checks must pass before landing.
+
+
+## 2026-10-14 — Atomic PID publication and owned rollback (#31)
+
+A private standalone exec comparison reproduces the source-audited failure:
+rune returns zero for a requested PID-file destination that is a directory;
+pinned runc returns 255. Both preserve init identity and clean their disposable
+resources. This baseline result was observed using the previously validated
+logging release (production sources equal main 5c19cca); the reproduction did
+not independently capture its binary checksum. Do not present it as a newly
+attested exact artifact. The scripted candidate evidence must capture source,
+binary, lockfile and suite revisions.
+
+Move publication out of the early main-process handshake. Once the child is
+ready and init state is saved, publish before returning create or releasing
+the exec start barrier. A same-directory random temporary file, synchronized
+write and atomic rename preserve the old inode/symlink target and permit
+concurrent complete records. Unlike pinned runc's fixed temporary basename,
+unique names avoid artificial writer collisions. Temporary cleanup failures
+are returned with the publication error. This is atomic visibility, not full
+crash-durability or file-mode/platform conformance.
+
+On publication failure, establish unreaped child ownership before obtaining a
+pidfd, terminate that process and poll/reap with a five-second bound. Never
+signal on ECHILD or substitute a bare PID when pidfd acquisition fails. Remove
+the failed exec's notify socket after confirmed reap. Preserve all publication,
+process, temporary/socket and resource-cleanup errors. If rollback is not
+confirmed, skip init resource/state removal and retain a private recovery
+marker; exec never overwrites the init PID. Native per-container locking allows
+one outstanding marker. Further lifecycle commands fail explicitly pending
+recovery; automated recovery is still unsupported. If even recovery persistence
+fails, report that error and retain existing ownership state. This is not the
+complete crash-safe resource ledger required by #17/#3.
+
+Tests exercise the production publisher (replacement, symlink/hardlink target
+preservation, failed destination, temporary cleanup and concurrent complete
+reads) and owned-child termination/reap/nonchild rejection. A synthetic recovery
+record blocks lifecycle effects while preserving the live owned fixture. The
+first full run caught a missing-container diagnostic regression from checking
+recovery before backend state loading; retain the established backend error
+path and check the marker after loading. Review also replaced an initial
+directory scan with one fixed marker so ordinary accumulated exec files cannot
+make the runtime reject lifecycle operations.
+
+Extend the existing rootless exec and create rollback suites instead of adding
+a duplicate container harness. Preserve native PID/FD/stdio forwarding, private
+root binding, every security default and cleanup failure. Init invalid output
+paths are injected by an exec-based argument adapter; this fixture does not
+prove which cleanup layer performed every action. Foreground/detached exec
+checks observe no new remaining container process and no new native socket
+records, preserve existing destination inodes and retain init identity. Full
+parent-death, process/resource syscall-fault injection, rootful and complete
+concurrency/recovery semantics stay open under #31/#17.
+
+Product direction also authorizes workflow replacement. Automate backend patch
+regeneration/checking against the checksum-pinned archive with a small standard
+library helper. Its generated patch applies to the archive and exactly
+reproduces all 75 Rust/TOML sources. Keep mandatory exact-revision validation;
+avoid repeating unchanged hosted runs or creating duplicate suites. Implementation
+and review are AI-generated.
+
+Exact implementation d090d8d passes 46 Rust/14 Python tests, required static
+gates, the signed-reference exec suite including PID publication/failure,
+release create rollback including both invalid PID output cases and broad
+rootless smoke with init/exec security and cleanup. Review scope and aggregate
+evidence are in `docs/parity/validation/2026-10-14-pidfile.md`. Final documentation
+head and hosted gates remain required; broader #31 recovery/fault work stays open.
