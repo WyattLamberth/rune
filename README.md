@@ -47,6 +47,16 @@ cargo clippy --workspace --locked --all-targets -- -D warnings
 RUNE_TEST_SEED=42 RUNE_TEST_STEPS=100000 cargo test --locked --test universe
 ```
 
+## Diagnostics
+
+Backend diagnostics are enabled at info level; `--debug` enables debug events.
+`--log PATH` appends to one synchronous diagnostic sink; otherwise it uses stderr.
+`--log-format json` applies to every event with `level`, `msg` and RFC 3339 `time`
+fields. Text uses one escaped record per line. Final command errors also appear
+on stderr when logging to a file. Opening a requested log fails before dispatch;
+write failures are reported and make an otherwise successful invocation fail.
+This is local diagnostic output, separate from opt-in aggregate telemetry.
+
 ## Design and limitations
 
 Dependency-free deterministic policy core; native Linux adapter and OCI parser

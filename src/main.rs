@@ -2,12 +2,14 @@
 
 mod exec_policy;
 mod linux;
+mod logging;
 mod validation;
 
 use anyhow::{Result, bail};
 use clap::{Parser, Subcommand};
 use liboci_cli::{Create, Delete, Exec, Kill, Pause, Resume, Start, State};
-use std::path::PathBuf;
+use logging::LogFormat;
+use std::path::{Path, PathBuf};
 
 #[derive(Parser, Debug)]
 #[command(
@@ -22,8 +24,8 @@ struct Cli {
     systemd_cgroup: bool,
     #[arg(long, global = true)]
     log: Option<PathBuf>,
-    #[arg(long, global = true, default_value = "text", value_parser = ["text", "json"])]
-    log_format: String,
+    #[arg(long, global = true, default_value = "text", value_enum)]
+    log_format: LogFormat,
     #[arg(long, global = true)]
     debug: bool,
     #[command(subcommand)]
@@ -41,9 +43,9 @@ enum Command {
     Exec(Box<Exec>),
 }
 
-fn root_path(requested: Option<PathBuf>) -> Result<PathBuf> {
+fn root_path(requested: Option<&Path>) -> Result<PathBuf> {
     if let Some(root) = requested {
-        return Ok(root);
+        return Ok(root.to_path_buf());
     }
     let Some(base) = std::env::var_os("XDG_RUNTIME_DIR") else {
         if nix::unistd::geteuid().is_root() {
@@ -58,7 +60,7 @@ fn root_path(requested: Option<PathBuf>) -> Result<PathBuf> {
     Ok(base.join("rune"))
 }
 fn execute(cli: &Cli) -> Result<i32> {
-    let root = root_path(cli.root.clone())?;
+    let root = root_path(cli.root.as_deref())?;
     match &cli.command {
         Command::Create(args) => linux::create(&root, args, cli.systemd_cgroup),
         Command::Start(args) => linux::start(&root, &args.container_id),
@@ -71,57 +73,33 @@ fn execute(cli: &Cli) -> Result<i32> {
     }?;
     Ok(0)
 }
+fn run(cli: &Cli) -> i32 {
+    let log = match logging::init(cli.log.as_deref(), cli.log_format, cli.debug) {
+        Ok(log) => log,
+        Err(error) => {
+            eprintln!("rune: cannot initialize logging: {error:#}");
+            return 1;
+        }
+    };
+    let code = match execute(cli) {
+        Ok(code) => code,
+        Err(error) => {
+            let message = format!("{error:#}");
+            tracing::error!("{message}");
+            if cli.log.is_some() {
+                eprintln!("rune: {message}");
+            }
+            1
+        }
+    };
+    if let Some(error) = log.failure() {
+        eprintln!("rune: cannot write requested log: {error}");
+        return if code == 0 { 1 } else { code };
+    }
+    code
+}
+
 fn main() {
-    let cli = Cli::parse();
-    if cli.debug {
-        if let Some(path) = &cli.log {
-            match std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path)
-            {
-                Ok(file) => tracing_subscriber::fmt()
-                    .with_max_level(tracing_subscriber::filter::LevelFilter::DEBUG)
-                    .with_writer(std::sync::Mutex::new(file))
-                    .with_ansi(false)
-                    .init(),
-                Err(err) => {
-                    eprintln!("rune: cannot open debug log: {err}");
-                    std::process::exit(1);
-                }
-            }
-        } else {
-            tracing_subscriber::fmt()
-                .with_max_level(tracing_subscriber::filter::LevelFilter::WARN)
-                .with_writer(std::io::stderr)
-                .with_ansi(false)
-                .init();
-        }
-    }
-    let result = execute(&cli);
-    if let Ok(code) = result {
-        std::process::exit(code);
-    }
-    if let Err(error) = result {
-        let message = format!("{error:#}");
-        eprintln!("rune: {message}");
-        if let Some(path) = &cli.log {
-            use std::io::Write;
-            let line = if cli.log_format == "json" {
-                serde_json::json!({"level":"error", "msg":message}).to_string()
-            } else {
-                message
-            };
-            match std::fs::OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open(path)
-                .and_then(|mut file| writeln!(file, "{line}"))
-            {
-                Ok(()) => {}
-                Err(err) => eprintln!("rune: cannot write requested error log: {err}"),
-            }
-        }
-        std::process::exit(1);
-    }
+    // run returns after synchronous log writes and drops its handles before exit.
+    std::process::exit(run(&Cli::parse()));
 }
