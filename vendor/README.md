@@ -37,3 +37,8 @@ NUMA policy uses a bounded production node parser with merged duplicate ranges,
 a fixed CPU-set-sized node-ID ceiling matching pinned runc, and the existing 4 MiB configuration text
 limit. Create and stored exec snapshots use the same policy preflight before
 container acquisition or tenant setup. These bounds do not prove exhaustive NUMA semantics.
+
+Delete removes runtime ownership state after successful kernel/resource cleanup
+and before poststop hooks, matching pinned runc and OCI deletion timing. Hook
+errors remain observable; pinned reference/spec continuation and warning
+semantics are explicitly unresolved under #35.

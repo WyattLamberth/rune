@@ -241,7 +241,7 @@
          tracing::debug!("container status: {:?}", self.status());
 
          // Check if container is allowed to be deleted based on container status.
-@@ -69,67 +73,44 @@
+@@ -69,65 +73,42 @@
          // Once reached here, the container is verified that it can be deleted.
          debug_assert!(self.status().can_delete());
 
@@ -253,8 +253,13 @@
              self.id(),
 -        ) {
 -            tracing::warn!("failed to cleanup intel rdt due to: {err:?}, continue to delete");
+-        }
 +        )?;
-+
+
+-        if self.root.exists() {
+-            match YoukiConfig::load(&self.root) {
+-                Ok(config) => {
+-                    tracing::debug!("config: {:?}", config);
 +        tracing::debug!("config: {:?}", config);
 +        let cmanager =
 +            libcgroups::common::create_cgroup_manager(libcgroups::common::CgroupConfig {
@@ -266,26 +271,7 @@
 +            tracing::error!(cgroup_path = ?config.cgroup_path, "failed to remove cgroup due to: {err:?}");
 +            err
 +        })?;
-+
-+        if let Some(hooks) = config.hooks.as_ref() {
-+            hooks::run_hooks(
-+                hooks.poststop().as_ref(),
-+                Some(&self.state),
-+                None,
-+                None,
-+                None,
-+            )
-+            .map_err(|err| {
-+                tracing::error!(err = ?err, "failed to run post stop hooks");
-+                err
-+            })?;
-         }
 
--        if self.root.exists() {
--            match YoukiConfig::load(&self.root) {
--                Ok(config) => {
--                    tracing::debug!("config: {:?}", config);
--
 -                    // remove the cgroup created for the container
 -                    // check https://man7.org/linux/man-pages/man7/cgroups.7.html
 -                    // creating and removing cgroups section for more information on cgroups
@@ -300,7 +286,12 @@
 -                        tracing::error!(cgroup_path = ?config.cgroup_path, "failed to remove cgroup due to: {err:?}");
 -                        err
 -                    })?;
--
++        // Remove ownership records only after kernel/resource cleanup succeeded.
++        fs::remove_dir_all(&self.root).map_err(|err| {
++            tracing::error!(?err, path = ?self.root, "failed to remove container dir");
++            LibcontainerError::OtherIO(err)
++        })?;
+
 -                    if let Some(hooks) = config.hooks.as_ref() {
 -                        hooks::run_hooks(
 -                            hooks.poststop().as_ref(),
@@ -331,16 +322,20 @@
 -            fs::remove_dir_all(&self.root).map_err(|err| {
 -                tracing::error!(?err, path = ?self.root, "failed to remove container dir");
 -                LibcontainerError::OtherIO(err)
--            })?;
--        }
-+        // Remove ownership records only after every required cleanup succeeded.
-+        fs::remove_dir_all(&self.root).map_err(|err| {
-+            tracing::error!(?err, path = ?self.root, "failed to remove container dir");
-+            LibcontainerError::OtherIO(err)
-+        })?;
++        if let Some(hooks) = config.hooks.as_ref() {
++            hooks::run_hooks(
++                hooks.poststop().as_ref(),
++                Some(&self.state),
++                None,
++                None,
++                None,
++            )
++            .map_err(|err| {
++                tracing::error!(err = ?err, "failed to run post stop hooks");
++                err
+             })?;
+         }
 
-         Ok(())
-     }
 --- a/crates/libcontainer/src/container/container_kill.rs
 +++ b/crates/libcontainer/src/container/container_kill.rs
 @@ -65,7 +65,19 @@

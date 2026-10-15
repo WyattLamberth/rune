@@ -501,3 +501,39 @@ semantics. Pinned OCI requires warning and remaining-hook continuation, while
 pinned runc's hook list returns at first failure and rune retains state before
 hook completion. Kernel confirmation and a compliant compatibility design remain
 open; this increment does not silently choose or claim both contracts.
+
+## 2026-10-14 — Verify poststop contract and correct deletion timing (#35)
+
+Evidence: reviewed pinned OCI lifecycle step 13/config poststop, runc
+state_linux.go destroy and configs.Hooks.Run, rune hook execution/delete history
+and CLI logging. A controlled live rootless two-hook probe makes the first hook
+fail with exit 7, while the second would succeed. Both runtimes return delete
+exit 1 and never invoke the second hook. Runc's first hook sees the state
+directory absent; rune's sees it present, and rune retains state after the error.
+All private resources are recovered after observation. These initial probes
+are development evidence, not attributed to an exact committed fixture revision.
+
+Decision: remove runtime state only after successful kernel/resource cleanup,
+but before poststop execution, matching both pinned reference ordering and OCI
+post-deletion timing. Keep the snapshot in memory for hook state/dispatch.
+Metadata, signals, RDT, cgroup and directory-removal errors still return before
+hook execution; no unknown ownership is discarded. This supersedes the earlier
+#17 decision that retained state through hook completion. Once actual resources
+are destroyed, poststop is a separate lifecycle stage with its own diagnostics.
+Hook failures still propagate rather than disappearing, and reference first-hook
+error behavior remains unchanged in this timing increment.
+
+Unresolved conflict: OCI requires warning and remaining-hook/lifecycle
+continuation, whereas pinned runc stops at the first error and returns failure.
+The kernel probe confirms this is real, not just a source inference. Do not
+claim OCI conformance or full hook parity. Investigate a compliant compatibility
+contract separately; do not change default behavior silently or equate successful
+resource destruction with successful hooks. Warning-format detection in the
+probe is only a textual indicator; return/continuation results already disprove
+conformance. Hook timeout and retry cross-products remain additional work.
+
+Validation uses the same private-root binding and native PID/FD/stdio behavior.
+Published observations contain only hook ordinal, boolean directory/state-field
+presence and standard status; no IDs, paths or contents. No unsafe, dependencies,
+lockfiles or isolation changes. The dependency patch reproduces the pinned
+package. Exact committed validation follows.
