@@ -786,3 +786,9 @@ Product direction explicitly reaffirms that any part of rune, including the
 entire implementation, may be replaced when evidence justifies it. Existing
 code is no design constraint; isolation and exact-revision validation remain
 mandatory. Implementation and review here are AI-generated.
+
+Implementation `32496ff` passes 40 Rust tests and mandatory static gates, all
+eight signed-reference logging cases per runtime, and release rootless Podman
+smoke with both SELinux domain checks and cleanup. Aggregate evidence and
+AI-generated review limits are in `docs/parity/validation/2026-10-14-logging.md`.
+Final documentation revision and hosted checks must pass before landing.

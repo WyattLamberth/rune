@@ -1,0 +1,128 @@
+{
+  "cargo_lock_sha256": "7ad722ce78bb921b35a8f43bf6f8c8702fde940e6e96f457e258d34d9b324ebc",
+  "matching_assertions": true,
+  "runc_binary_sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+  "runc_revision": "29dd3dc2b13b4123162e5fe132504bb4b15569f1",
+  "rune_binary_sha256": "340ec1961b509e8fa91541f59ad9f4584a6830a73a81f728cb99f9744dbe2fb9",
+  "rune_revision": "32496ff923928aa4216f962f0c41dc94f48d7fdc",
+  "runtimes": {
+    "runc": {
+      "json-False-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "json-False-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "json-True-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "json-True-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-False-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-False-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-True-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-True-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      }
+    },
+    "rune": {
+      "json-False-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "json-False-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "json-True-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "json-True-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-False-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-False-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-True-file": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      },
+      "text-True-stderr": {
+        "append_preserved": true,
+        "diagnostics_framed": true,
+        "nonzero": true,
+        "stderr_present": true,
+        "stdout_empty": true
+      }
+    }
+  },
+  "scope": "Standalone CLI diagnostic framing, append and error paths; not full logging parity, kernel isolation or cross-process ordering",
+  "suite_sha256": "753d4a7c1ab76358e371888739a21162080b722362cfd9a54e91d221085133f6"
+}
