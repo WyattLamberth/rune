@@ -938,6 +938,7 @@ name = "rune-oci"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "clap",
  "libcontainer",
  "liboci-cli",
@@ -948,6 +949,7 @@ dependencies = [
  "serde_ignored",
  "serde_json",
  "tempfile",
+ "tracing",
  "tracing-subscriber",
 ]
 

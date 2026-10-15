@@ -1,0 +1,52 @@
+{
+  "cargo_lock_sha256": "7ad722ce78bb921b35a8f43bf6f8c8702fde940e6e96f457e258d34d9b324ebc",
+  "cases": {
+    "general-kernel": "pass"
+  },
+  "cleanup": {
+    "after": {
+      "entries": 0,
+      "records": {},
+      "statuses": {},
+      "truncated": false
+    },
+    "before": {
+      "entries": 0,
+      "records": {},
+      "statuses": {},
+      "truncated": false
+    },
+    "resources_retained": false
+  },
+  "error_types": [],
+  "gaps": [
+    "complete-conformance",
+    "kernel-leak-enumeration",
+    "interrupted-acquisition",
+    "concurrency"
+  ],
+  "phase": "completed",
+  "rune_binary_sha256": "7454747415a276cde2079bfd3c29753a4dbc3ae24040dda375291120238aca85",
+  "rune_revision": "32496ff923928aa4216f962f0c41dc94f48d7fdc",
+  "runtime_kind": "rune",
+  "runtime_scope": {
+    "expired_scopes": {},
+    "missing_root_arguments": {
+      "delete": 1
+    },
+    "operations": {
+      "create": 10,
+      "delete": 10,
+      "exec": 2,
+      "kill": 1,
+      "pause": 1,
+      "resume": 1,
+      "start": 10
+    }
+  },
+  "selinux_domain_checks": {
+    "exec": "pass",
+    "init": "pass"
+  },
+  "suite_sha256": "c855b69c3ad870fed575a6899ac46316ea5f1fe5aa556116cddd752f08ae2622"
+}

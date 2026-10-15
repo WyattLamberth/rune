@@ -750,3 +750,45 @@ behavior and existing validation limitations unchanged. AI-generated review
 checks the complete tracked-file search and documentation diff; formatting,
 warnings-denied Clippy, architecture and workspace test gates validate the
 proposed revision. Historical commits remain the engineering record.
+
+
+## 2026-10-14 — CLI diagnostic pipeline (#45)
+
+The CLI review identified backend events dropped without debug, warning-only
+stderr in debug mode, mixed text/JSON output and two independently opened
+writers. Pinned runc v1.5.2 `main.go:193–234` configures one logrus sink, enables
+debug filtering and selects a JSON formatter. Its fatal writer routes terminal
+errors to that logger and additionally to stderr when redirected.
+
+Replace the split path with a small tracing layer and one synchronized,
+synchronous writer. Emit level/message/RFC 3339 timestamps consistently, retain
+extra backend event fields separately, and preserve the first write/flush error.
+Opening the destination fails before runtime effects; write errors do not roll
+back an already executed command, and cannot erase its nonzero status. Use a
+typed format enum and borrowed root path. The default tracing JSON schema would
+use different field names; a custom adapter keeps the expected level/msg/time
+keys without adding a second serialization path. Clock and IO stay outside the
+dependency-free core. Chrono/tracing already existed in the lockfile; direct
+dependencies introduce no new packages.
+
+The cgroup concern was checked against `init_builder.rs`, `state.rs`,
+`tenant_builder.rs`, and lifecycle adapters: the backend persists use_systemd
+and reloads it. This is source evidence, not new rootful/systemd kernel proof.
+Missing commands remain #12; this increment makes no complete parity claim.
+Regression tests cover level filtering, consistent schemas, append, backend and
+final events, write/flush/open failures and process-local concurrent records.
+The signed-reference comparison covers eight flag/destination combinations per
+runtime. Cross-process ordering, caller/span metadata and byte-for-byte runc
+text/error equality are not established. Runtime integration remains necessary
+to check diagnostic initialization across backend process setup.
+
+Product direction explicitly reaffirms that any part of rune, including the
+entire implementation, may be replaced when evidence justifies it. Existing
+code is no design constraint; isolation and exact-revision validation remain
+mandatory. Implementation and review here are AI-generated.
+
+Implementation `32496ff` passes 40 Rust tests and mandatory static gates, all
+eight signed-reference logging cases per runtime, and release rootless Podman
+smoke with both SELinux domain checks and cleanup. Aggregate evidence and
+AI-generated review limits are in `docs/parity/validation/2026-10-14-logging.md`.
+Final documentation revision and hosted checks must pass before landing.
