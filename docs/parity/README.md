@@ -1,7 +1,6 @@
 # runc compatibility baseline and evidence
 
-Baseline established 2026-10-12 under GitHub [#11](https://github.com/WyattLamberth/rune/issues/11)
-and [RMU-28](https://linear.app/rmux/issue/RMU-28).
+Baseline established 2026-10-12 under GitHub [#11](https://github.com/WyattLamberth/rune/issues/11).
 
 | Source | Release | Exact revision |
 | --- | --- | --- |

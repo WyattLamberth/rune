@@ -737,3 +737,16 @@ sandbox fixture at 805b121 passes Rust/Clippy and failed-create rollback/private
 cleanup. The full review and limitations are in the combined validation record.
 Hosted combined checks and final-head general/hook gates remain required before
 landing; publication alone is not delivery.
+
+
+## 2026-10-14 — Independent project documentation (#43)
+
+At the product owner’s request, remove unrelated project attribution and
+workspace-specific delivery URLs from the README, architecture description and
+parity baseline. Keep the engineering principles and GitHub baseline/backlog
+links; describe Nix pinning through the committed lockfile. Remove those URLs
+rather than invent replacement links. This documentation change leaves runtime
+behavior and existing validation limitations unchanged. AI-generated review
+checks the complete tracked-file search and documentation diff; formatting,
+warnings-denied Clippy, architecture and workspace test gates validate the
+proposed revision. Historical commits remain the engineering record.
