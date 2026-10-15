@@ -8,12 +8,17 @@ Primary checkout is on `codex/40-cleanup-integration`, combining main
 `f8fc760029a051e80f7ae1f21884ca751e56d39d` with cleanup PRs #33/#36/#37/#39.
 Preserve both histories and main's nonregular-input validation and init-security
 assertions. Resolve documentation chronology and combine runtime-scope and
-SELinux result fields. All exact combined gates, patch reproduction and kernel
-suites follow before delivery; branch publication is not main integration.
+SELinux result fields. Combined `937db3f294e11ddd47f7f6754581f8fd871fc473` passes all stated local
+gates and kernel suites. #39 Nix exposed a fixture interpreter dependency;
+805b121 replaces it with Rust child/worker modes and passes Rust/rollback.
+Evidence: `docs/parity/validation/2026-10-14-cleanup-integration.md`. Final head
+general/hook and hosted Rust/Nix checks remain required before main delivery;
+branch publication is not main integration.
 
 PR #39 final `341751002725893fd2cada2843803f3a6a69d3c2` passes local Rust/static
 and deadline/EOF comparisons. Implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb`
-also passes all stated kernel regressions. Inspect hosted CI before integration.
+also passes all stated kernel regressions. Its original hosted Nix failed on the fixture interpreter assumption; the
+combined correction must pass hosted CI before integration.
 PR #37 final `956a82997b672be871575c49e57f23c22c6b81be` passes hosted Rust/Nix.
 OCI/reference poststop continuation conflict (#35) and concurrent callback hook
 attribution (#17) remain open. No retained runtime records/recovery locators.

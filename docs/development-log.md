@@ -727,3 +727,13 @@ checks or weaken the sandbox. The correction is part of combined #40 delivery;
 kernel comparisons, metadata faults and input/absence checks before this fixture
 correction. Failed-create invocation used an unsupported results flag and was
 rejected before execution; rerun with its supported interface.
+
+Combined `937db3f294e11ddd47f7f6754581f8fd871fc473` passes 33 Rust/14 Python/
+two label tests and all mandatory static gates, plus seed-42 100000-step policy
+replay. Input/absence, all three hook scenarios, exec/NUMA/preflight/general
+signed-reference comparisons and live metadata fault/retry pass their scoped
+assertions. Init/exec SELinux domain checks both run and pass. The corrected
+sandbox fixture at 805b121 passes Rust/Clippy and failed-create rollback/private
+cleanup. The full review and limitations are in the combined validation record.
+Hosted combined checks and final-head general/hook gates remain required before
+landing; publication alone is not delivery.
