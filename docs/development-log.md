@@ -852,3 +852,10 @@ library helper. Its generated patch applies to the archive and exactly
 reproduces all 75 Rust/TOML sources. Keep mandatory exact-revision validation;
 avoid repeating unchanged hosted runs or creating duplicate suites. Implementation
 and review are AI-generated.
+
+Exact implementation d090d8d passes 46 Rust/14 Python tests, required static
+gates, the signed-reference exec suite including PID publication/failure,
+release create rollback including both invalid PID output cases and broad
+rootless smoke with init/exec security and cleanup. Review scope and aggregate
+evidence are in `docs/parity/validation/2026-10-14-pidfile.md`. Final documentation
+head and hosted gates remain required; broader #31 recovery/fault work stays open.
