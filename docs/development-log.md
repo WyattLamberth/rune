@@ -715,3 +715,15 @@ history; run all relevant exact Rust/static and signed-reference kernel suites.
 Broader cleanup/concurrency, poststop OCI/reference continuation, bounded FIFO
 streaming, platform and full-parity scope remains open. Separate PID-file work is
 not imported or modified. AI-generated integration/review; no human review claim.
+
+Hosted #39 Nix failed at the hook regression because the fixture hardcoded
+/usr/bin/python3, absent in the build sandbox. Local and hosted Rust passed;
+this was a test portability defect, not a passing Nix result. Replace the hook
+fixture with an explicitly selected child mode of the same Rust test executable,
+keeping every deadline/EOF/exit/negative-timeout/reaping assertion and the bounded
+outer worker. This needs no interpreter or build/runtime dependency. Do not skip
+checks or weaken the sandbox. The correction is part of combined #40 delivery;
+#39's original failing checks remain recorded. Combined 937db3f passed all stated
+kernel comparisons, metadata faults and input/absence checks before this fixture
+correction. Failed-create invocation used an unsupported results flag and was
+rejected before execution; rerun with its supported interface.

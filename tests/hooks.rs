@@ -8,26 +8,39 @@ use libcontainer::hooks::{HookError, run_hooks};
 use oci_spec::runtime::HookBuilder;
 
 #[test]
+#[ignore = "owned hook child selected by the production adapter"]
+fn hook_child() {
+    use std::io::Read;
+    let case = std::env::var("RUNE_HOOK_CASE").unwrap();
+    let directory = std::env::var("RUNE_HOOK_DIRECTORY").unwrap();
+    std::fs::write(format!("{directory}/pid"), std::process::id().to_string()).unwrap();
+    match case.as_str() {
+        "backpressure" | "wait-timeout" => std::thread::sleep(Duration::from_secs(4)),
+        "nonzero" => std::process::exit(7),
+        "early-success" => {}
+        _ => {
+            std::io::stdin().read_to_end(&mut Vec::new()).unwrap();
+        }
+    }
+}
+
+#[test]
 #[ignore = "bounded subprocess worker invoked by the parent test"]
 fn hook_worker() {
     let case = std::env::var("RUNE_HOOK_CASE").unwrap();
     let directory = std::env::var("RUNE_HOOK_DIRECTORY").unwrap();
-    let script = if case == "backpressure" || case == "wait-timeout" {
-        "import pathlib,sys,time,os;pathlib.Path(sys.argv[1]).write_text(str(os.getpid()));time.sleep(4)"
-    } else if case == "nonzero" {
-        "import pathlib,sys,os;pathlib.Path(sys.argv[1]).write_text(str(os.getpid()));sys.exit(7)"
-    } else if case == "early-success" {
-        "import pathlib,sys,os;pathlib.Path(sys.argv[1]).write_text(str(os.getpid()));sys.exit(0)"
-    } else {
-        "import pathlib,sys,os;pathlib.Path(sys.argv[1]).write_text(str(os.getpid()));sys.stdin.read()"
-    };
     let hook = HookBuilder::default()
-        .path("/usr/bin/python3")
+        .path(std::env::current_exe().unwrap())
         .args(vec![
-            "python3".into(),
-            "-c".into(),
-            script.into(),
-            format!("{directory}/pid"),
+            "rune-hook-child".into(),
+            "--exact".into(),
+            "hook_child".into(),
+            "--ignored".into(),
+            "--test-threads=1".into(),
+        ])
+        .env(vec![
+            format!("RUNE_HOOK_CASE={case}"),
+            format!("RUNE_HOOK_DIRECTORY={directory}"),
         ])
         .timeout(if case == "negative" { -1 } else { 1 })
         .build()
