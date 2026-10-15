@@ -4,19 +4,27 @@ Updated 2026-10-14; AI-generated engineering. Goal remains active.
 
 ## Current checkpoint — PID publication (#31)
 
-Main 5c19cca includes the delivered independent-project documentation and CLI
-logging fixes (PRs #44/#46); both hosted Rust/Nix gates passed. This chat works
-in its isolated worktree on `codex/31-pidfile-rollback`; preserve the primary
-checkout's separate #42 hook-input work.
+Main 2f00a3c includes PID-file publication/owned rollback from PR #47, plus
+independent-project documentation and logging (PRs #44/#46). Final #47 head
+4b14a4d passes all local and hosted Rust/Nix checks; its production/test/tool/lock
+tree equals exact kernel-tested d090d8d. Preserve the primary checkout's separate
+#42 hook-input work. This chat uses its isolated managed worktree and is now
+removing duplicate feature-branch CI events under #48.
 
 The PID-file baseline comparison observes incorrect native success versus
 reference failure. Candidate code publishes atomically after readiness, rolls
 back the newly owned child, cleans failed exec sockets and preserves incomplete
 rollback ownership. Recovery records block lifecycle effects; automated recovery,
 full fault/crash/concurrency and rootful coverage remain open. See the #31
-development-log entry. Complete final-revision tests, differential/create/broad
-kernel checks and hosted CI before main delivery; do not close the broader
-issue from this subset.
+development-log entry and `docs/parity/validation/2026-10-14-pidfile.md`. The
+delivered subset passes 46 Rust/14 Python tests, signed-reference exec, create
+rollback and broad release rootless security/lifecycle/cleanup. Keep #31 open
+for remaining actual faults/crash/concurrency/recovery and reference create
+sequence evidence; do not repeat delivered work.
+
+An hourly continuation for this chat is active as `rune-engineering-continuation`.
+It reconciles Git/GitHub/Linear before progressing, stays quiet without actionable
+change and respects a later user pause/stop. It does not replace validation.
 
 ## Prior checkpoint — combine cleanup and hook delivery (#40 / RMU-42)
 

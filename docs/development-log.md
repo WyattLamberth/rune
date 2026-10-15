@@ -859,3 +859,21 @@ release create rollback including both invalid PID output cases and broad
 rootless smoke with init/exec security and cleanup. Review scope and aggregate
 evidence are in `docs/parity/validation/2026-10-14-pidfile.md`. Final documentation
 head and hosted gates remain required; broader #31 recovery/fault work stays open.
+
+
+## 2026-10-14 — Remove duplicate feature-branch CI (#48)
+
+The product owner authorized replacing workflow that slows delivery. GitHub
+records two complete runs of the same PR #47 source head 4b14a4d: push run
+38682949780 and pull_request run 38682954305. Both pass identical Rust and Nix
+jobs. Keep pull_request validation and push validation on main, while removing
+feature-branch push triggers. This removes the duplicate event without dropping
+any job, changing pinned actions/toolchains, broadening permissions or relaxing
+checks. Feature branches acquire hosted validation when their PR is opened;
+the integrated main revision still triggers its own validation.
+
+No runtime/build/test inputs change. Review compares the complete workflow job
+map and permissions against the prior revision. Validate the actual PR event
+count and both Rust/Nix results, then observe main push dispatch after delivery.
+Existing mandatory local gates remain required. Implementation/review are
+AI-generated. No kernel/performance claim follows from this workflow change.
