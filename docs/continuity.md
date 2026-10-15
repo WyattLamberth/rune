@@ -1,58 +1,71 @@
 # Continuous rune work checkpoint
 
-Updated 2026-10-14; AI-generated engineering. Work resumed by the user.
+Updated 2026-10-14; AI-generated engineering. Goal remains active.
 
-## Current increment — integrate the alpha into main (#30 / RMU-37)
+## Current checkpoint — combine cleanup and hook delivery (#40 / RMU-42)
 
-Main at a9ba97984ccc2c9fedb538e7a10c41070b5df91a contains only documentation.
-Eleven published PRs were mistakenly treated as the delivery boundary. The user
-identified this gap; adding features is now secondary to finishing integration.
-Branch codex/30-integrate-alpha combines the full validated stack through
-c614c12ee338271d14c86447a7b4fd1c09b94a35 and cleanup-evidence documentation
-763740e8fd6bf024781af9c697d7f6b7591a1f28. Runtime code is unchanged by that merge.
-Preserve both histories and all exact evidence. Review the combined candidate,
-run exact local/static/kernel gates, wait for hosted Rust/Nix, then land and
-record the actual main revision. Reconcile the superseded PR stack and Linear.
-Do not call publication delivery or imply human review.
+Primary checkout is on `codex/40-cleanup-integration`, combining main
+`f8fc760029a051e80f7ae1f21884ca751e56d39d` with cleanup PRs #33/#36/#37/#39.
+Preserve both histories and main's nonregular-input validation and init-security
+assertions. Resolve documentation chronology and combine runtime-scope and
+SELinux result fields. Combined `937db3f294e11ddd47f7f6754581f8fd871fc473` passes all stated local
+gates and kernel suites. #39 Nix exposed a fixture interpreter dependency;
+805b121 replaces it with Rust child/worker modes and passes Rust/rollback.
+Evidence: `docs/parity/validation/2026-10-14-cleanup-integration.md`. Final head
+general/hook and hosted Rust/Nix checks remain required before main delivery;
+branch publication is not main integration.
 
-Known alpha gaps remain: #17 cleanup/concurrency/recovery; #31 PID-file failure
-handling (source-only finding); #27 streamed-input policy conflict; #11–#14 full
-semantic inventory, CLI/field support and conformance/environment coverage.
-Complete parity is unproven; integration must not close those parent issues.
+PR #39 final `341751002725893fd2cada2843803f3a6a69d3c2` passes local Rust/static
+and deadline/EOF comparisons. Implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb`
+also passes all stated kernel regressions. Its original hosted Nix failed on the fixture interpreter assumption; the
+combined correction must pass hosted CI before integration.
+PR #37 final `956a82997b672be871575c49e57f23c22c6b81be` passes hosted Rust/Nix.
+OCI/reference poststop continuation conflict (#35) and concurrent callback hook
+attribution (#17) remain open. No retained runtime records/recovery locators.
 
-## Prior increment — nonregular JSON input (#27 / RMU-36)
+## Prior main integration — alpha and nonregular inputs
 
-Branch codex/27-nonregular-config, stacked on PR #26. Exact implementation
-8c8c4e25d27971aa4769f80080b2d506c88d5599 uses nonblocking open and verifies the
-opened descriptor is regular before bounded JSON reads. Regular-file symlinks
-remain supported. 31 Rust tests, static gates, ten Python regressions,
-standalone input differential, focused exec/NUMA kernel differentials and
-failed-create rollback pass. Evidence: docs/parity/validation/2026-10-13-config-input.md.
-Runc streamed FIFO acceptance conflicts with rune's bounded-input requirement;
-that unresolved conflict prevents complete parity. PR #29 final head c614c12ee338271d14c86447a7b4fd1c09b94a35 passes hosted
-Rust/Nix and exact local/input/exec/NUMA checks. Local Nix is unavailable.
+PR #32 merged the alpha/hardening; main is no longer documentation-only.
+Main's exact evidence is `docs/parity/validation/2026-10-14-integration.md`.
+#27 descriptor-based nonblocking regular-input validation and tests remain
+required; streamed FIFO acceptance differs from runc and is an unresolved policy
+conflict. Init seccomp and conditional SELinux domain assertions remain mandatory
+in the broad runner; they are not exhaustive action/MCS/denial coverage.
 
-## Prior increment — smoke output bounds (#17 / RMU-33)
+Prior #34 / RMU-39 is published in PR #36 at
+`ca9e25b357bd7fa4eb18808eb17d1a26c6190e99`; hosted Rust/Nix pass. Fully absent
+forced deletion is a production no-op. Partial/corrupt ownership errors remain.
 
-PR #26 final head dd06f7dc5f5d33a448f2b9e622cb8499edba21a5 passes hosted Rust/Nix,
-29 Rust tests, ten Python regressions, static gates and focused exec/NUMA checks.
-The broad differential retained one record in each runtime; later native queries
-reported stopped and explicit native deletion cleaned both private trees. Exact
-records remain committed. PR is ready for AI-generated review; original #17
-root cause and concurrency remain open. The other active rune chat continues
-broader cleanup investigation in its own checkout.
+## Prior increment — callback runtime-root binding
+
+PR #33, implementation `26074b5492ed2f7ff28ce31c013bb36c8cad1623`, final
+`6cbcc7aafb82e2f0d44e4f3d33039e8f4537104a`; hosted Rust/Nix pass. Both general
+cases observe omitted-root deletes, bind scope and pass strict cleanup. This
+fixes fixture routing, not complete kernel recovery/concurrency.
+
+## Prior increment — cleanup diagnostics and output bounds
+
+PR #28 at `763740e8fd6bf024781af9c697d7f6b7591a1f28` passes hosted Rust/Nix and
+focused kernel checks; its earlier general comparison retains a runc record.
+Separate native recovery succeeds. PR #26 at
+`dd06f7dc5f5d33a448f2b9e622cb8499edba21a5` adds output caps/recursive JSON
+handling and passes hosted/local checks; broad earlier failures remain recorded.
+The histories are reconciled in this branch.
+
+## Parallel existing work
+
+The other active “Read Codex goal objective” chat integrated alpha/hardening
+via merged PR #32 and is handling separate #31 PID-file publication/rollback.
+Do not modify its worktree. Reconcile main and open #33/#36 before integration;
+do not send cross-chat messages without human authorization.
 
 ## Prior increment — bounded NUMA preflight
 
-GitHub #23 / RMU-35, branch `codex/23-numa-bounds`, stacked on PR #24.
-Implementation `ce207b9df26a2e8f3d8ff8bbed8eb738505bc425` bounds node IDs/text,
-merges intervals before expansion, and validates create/stored exec policy before
-acquisition. 29 tests, all Rust gates, label tests, NUMA preflight differential,
-failed-create and general Podman suites pass. Five focused groups match pinned
-runc. Exact evidence: `docs/parity/validation/2026-10-12-numa-bounds.md`.
-Four memoryPolicy source entries now link partial evidence; zero entries fully
-verified. Finish final checks and publication, then repair general-smoke cleanup
-error preservation/diagnostics under #17 and review safe train integration.
+PR #25 / #23 / RMU-35, implementation
+`ce207b9df26a2e8f3d8ff8bbed8eb738505bc425`, final
+`3d3e377a7b89033b944a453eca6ae4780db4fe71`. Local and hosted Rust/Nix pass.
+29 tests and five focused kernel differential groups pass. Four memoryPolicy
+entries link partial evidence; none is fully verified.
 
 ## Prior increment — NUMA exec policy
 
@@ -107,8 +120,8 @@ GitHub #17 / RMU-33 owns the cleanup investigation and backend config-load audit
 Signed upstream runc v1.5.2 amd64 reference assets have been downloaded into
 ignored `work/reference-runc/`. SHA-256 matches the release checksum, and detached
 signature verifies against the keyring in the pinned source using a private local
-GPG home; system trust settings were not modified. These research inputs still
-need durable runner/build provenance and differential case evidence under #13.
+GPG home; system trust settings were not modified. The signed-reference runner and narrow evidence are committed under #13;
+source-build reproduction and full conformance remain open.
 
 ## Prior increment — baseline
 
@@ -122,23 +135,20 @@ implementation commit. Inspect Git for the current head rather than treating
 the implementation SHA as the final delivered revision.
 
 The inventory has 2,093 entries, zero verified semantic entries, and explicit
-limits. It is a floor for an exhaustive semantic parity matrix. All runtime
-source remains the alpha. GitHub #12–#14 and Linear RMU-29–RMU-31 own CLI gaps,
+limits. It is a floor for an exhaustive semantic parity matrix. At that baseline, runtime
+source remained the alpha. GitHub #12–#14 and Linear RMU-29–RMU-31 own CLI gaps,
 validation tooling and isolation field audit. The Verified runc parity milestone
 is open. Existing issues #1–#9 remain open because their broader acceptance
 criteria are not completed by the alpha.
 
 ## Next work
 
-1. Inspect main and GitHub #30/integration PR for the actual delivery revision
-   and final checks. Finish only unmet integration gates; do not repeat a landed
-   integration. Reconcile the superseded stack and Linear to authoritative state.
-2. Resume #31 PID-file atomic publication/failure rollback, then native run
-   parity; preserve cleanup failures rather than falsely reporting success.
-3. Reconcile the other active rune chat's #17 tracing before touching that work.
-4. Expand #11–#14 exhaustive parity cases, compliant streaming-input design and
-   environment coverage. Zero inventory entries are fully verified.
+1. Finish exact combined #40 validation, AI-generated history/code/decision
+   review, hosted CI, main integration and authoritative delivery reconciliation.
+2. Continue #35 OCI/reference continuation conflict and #17 concurrent delete /
+   callback attribution, resource failures and interrupted acquisition.
+3. Keep the other chat's separate #31 PID-file work isolated; inspect main before
+   integrating and do not send cross-chat messages without human authorization.
 
-Inspect live Git/GitHub/Linear state before resuming; implementation SHA pointers
-are not a substitute for delivered main evidence. Private test resources and
-reference inputs remain ignored. Never reset shared Podman storage or defaults.
+Full parity remains unproven and goal active. Inspect current Git/PR/Linear and
+private recovery locators; no retained test resource remains at this validation.

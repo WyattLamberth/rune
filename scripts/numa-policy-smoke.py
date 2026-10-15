@@ -7,6 +7,7 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from smoke_cleanup import finish_resources, run_bounded, public_error
+from smoke_scope import make_runtime, summary
 import tempfile
 import uuid
 
@@ -29,6 +30,7 @@ def main():
     if args.runtime_kind == 'runc' and binary_sha != REFERENCE_SHA:
         raise SystemExit('reference is not the authenticated pinned runc artifact')
     root = Path(tempfile.mkdtemp(prefix='rune-numa-policy-'))
+    runtime, scope_trace = make_runtime(runtime, root / 'state')
     # Podman prepares its ordinary rootless OCI bundle. The private fixture
     # adapter adds only the tested field before the native runtime reads it;
     # it forwards every invocation to that runtime and never executes workloads.
@@ -112,7 +114,7 @@ def main():
         cases['cleanup'] = 'pass' if len(errors) == before else 'validation_gap'
     results = {'runtime_kind': args.runtime_kind, 'binary_sha256': binary_sha,
         'image': IMAGE, 'policy': 'MPOL_LOCAL', 'expected_exec_policy': args.expect_exec,
-        'cases': cases, 'cleanup': cleanup_report, 'gaps': ['other-NUMA-modes-and-flags', 'malformed-policy-preflight',
+        'cases': cases, 'cleanup': cleanup_report, 'runtime_scope': summary(scope_trace), 'gaps': ['other-NUMA-modes-and-flags', 'malformed-policy-preflight',
             'denied-kernel-features', 'rootful', 'architectures', 'concurrency']}
     if args.results:
         args.results.write_text(json.dumps(results, indent=2) + '\n')

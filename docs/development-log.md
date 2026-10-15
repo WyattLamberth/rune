@@ -499,3 +499,241 @@ Versioned aggregate records and combined AI-generated review are in
 `docs/parity/validation/2026-10-14-integration.md`. Final-head/hosted gates and the
 actual main delivery revision must be checked and recorded before calling this
 increment delivered. Earlier failing cleanup records and all broader gaps remain.
+
+## 2026-10-14 — Reconcile completed smoke bounds before cleanup tracing (#17)
+
+The separate active chat completed PR #26 at
+`dd06f7dc5f5d33a448f2b9e622cb8499edba21a5` and is implementing #27 in its own
+worktree. This chat continues #17 in the primary checkout. Merge the completed
+4 MiB subprocess-output cap and recursive-state JSON handling into the cleanup
+trace branch, retaining both histories and validation/decision records. Do not
+modify the other active worktree or repeat its input-validation implementation.
+
+Pinned Podman source's CreateExitCommandArgs preserves the runtime executable
+but does not serialize per-invocation --runtime-flag arguments. Earlier fixtures
+used that option for the private runtime root. This is a concrete candidate
+explanation for sporadic retained state: the conmon cleanup command may target a
+different root, and ContainerRun can discard its removal error while preserving
+workload exit status. Verify actual requests before attributing the original
+failure. The next fixture must guard private scope before invoking native runtime
+commands, preserving PID/FD behavior and every isolation check.
+
+## 2026-10-14 — Keep conmon callbacks in the private runtime scope (#17)
+
+Evidence: source inspection at Podman 5.8.7
+`c593b672bf3db1173aebea565ebf1a724ea196dc` finds CreateExitCommandArgs forwards
+the runtime executable but not per-invocation runtime flags. Controlled request
+traces in two development comparisons confirm delete calls omit the private
+root argument for both rune and the signed pinned runc. Earlier --runtime-flag
+fixtures therefore did not keep conmon cleanup in their intended state scope.
+Podman can log removal errors and discard registry records, so that omission
+provides a concrete mechanism for sporadic leftovers. The original unrecorded
+rune failure still cannot be attributed retrospectively with certainty.
+
+Decision: bind the fixture's explicit private state root in a generated runtime
+launcher for every native invocation, including callbacks. Reject conflicting or
+duplicate root arguments and expired/non-owned scopes. Use execv, preserving
+PID, inherited descriptors and stdio; this is test fixture configuration, not
+rune delegating execution to runc. Trace only operation/boolean scope categories,
+under a 64 KiB bound with regular/no-follow descriptors; publish aggregate counts
+without IDs, paths or workload contents. Keep launcher/trace artifacts privately
+under ignored work so callbacks cannot fall into global default state roots.
+Apply the binding to general, exec, NUMA and failed-create fixtures.
+
+Alternatives: changing global defaults or abandoning private roots violates the
+disposable-resource contract. Sleeping until leftovers disappear hides root
+misrouting and does not repair callback configuration. Additional parent
+processes/captured native stdio could alter runtime PID/descriptor behavior, so
+use execv and confirm the production fixture preserves both with a real owned
+process/descriptor regression. No runtime policy, unsafe, dependencies, locks or
+isolation checks change. Scope requests remain kernel integration evidence, not
+policy simulation or exhaustive concurrency validation.
+
+Development: two comparisons pass the full general kernel suite and strict
+cleanup for both runtimes. The second records two missing-root deletes for runc
+and one for rune; each is bound to its private root before native execution.
+Four fixture contract tests plus ten existing cleanup tests pass. Exact committed
+validation follows; broader cleanup/crash/resource-failure acceptance remains open.
+
+Exact implementation `26074b5492ed2f7ff28ce31c013bb36c8cad1623` passes 29 Rust
+tests, 14 fixture/cleanup tests, static gates, label tests, all three signed
+differential suites and failed-create cleanup. Both general runs record one
+delete without its root argument, bind it correctly, and leave no runtime state.
+The request trace does not capture individual command exit results; overall
+workflow/state assertions remain the result evidence. Tighten test-child deadlines
+and kill/reap cleanup for the FIFO and PID/descriptor fixture regressions before
+final publication; this changes the test harness only.
+
+## 2026-10-14 — Make fully absent forced deletion a production no-op (#34)
+
+Evidence: reviewed core/adapter history from the alpha and exec snapshots,
+pinned runc delete.go, #17 and a live rootless metadata-fault fixture. Missing,
+malformed and FIFO cleanup metadata each reject forced deletion, preserve state
+bytes and keep the owned init running. Restoring metadata permits deletion, but
+subsequent frontend cleanup encountered an already-absent state directory and
+rune returned an error. Pinned runc treats complete absence as forced success.
+
+Decision: add internal Absent status/Noop effect to deterministic production
+policy. No-op dispatch invokes no adapter and cannot signal/delete resources.
+The Linux adapter observes directory absence under the validated-ID lock; only
+ENOENT is absence. Other errors, partial/corrupt records, files and symlinked
+state directories remain errors. Force absent succeeds without output; ordinary
+absent deletion still fails. Update seeded policy replay with absence and retain
+seed/step/bounded trace, explicitly distinct from kernel tests.
+
+Alternatives: treating missing state.json as full absence discards unknown
+resource ownership. Runc removes partial directories in that situation; rune
+keeps them pending the acquisition ledger, an explicit compatibility difference.
+Implementing the no-op only in an untested adapter branch would bypass production
+policy/replay. A new effect makes absence semantics testable without adding OS
+dependencies to the core. No unsafe/dependencies/lockfile changes.
+
+Development: 30 Rust tests and warnings-denied Clippy pass, including deadline
+protected absent/repeated force/ordinary/invalid-ID/partial/file/symlink cases.
+Standalone signed-reference comparison matches complete absence and records the
+partial-ownership difference. Live private kernel faults, restore/retry and
+frontend cleanup now all pass. The earlier development cleanup failure is not
+erased; its retained private resources were subsequently recovered.
+
+Source audit also opened #35 for poststop warning/continuation/deletion-order
+semantics. Pinned OCI requires warning and remaining-hook continuation, while
+pinned runc's hook list returns at first failure and rune retains state before
+hook completion. Kernel confirmation and a compliant compatibility design remain
+open; this increment does not silently choose or claim both contracts.
+
+## 2026-10-14 — Verify poststop contract and correct deletion timing (#35)
+
+Evidence: reviewed pinned OCI lifecycle step 13/config poststop, runc
+state_linux.go destroy and configs.Hooks.Run, rune hook execution/delete history
+and CLI logging. A controlled live rootless two-hook probe makes the first hook
+fail with exit 7, while the second would succeed. Both runtimes return delete
+exit 1 and never invoke the second hook. Runc's first hook sees the state
+directory absent; rune's sees it present, and rune retains state after the error.
+All private resources are recovered after observation. These initial probes
+are development evidence, not attributed to an exact committed fixture revision.
+
+Decision: remove runtime state only after successful kernel/resource cleanup,
+but before poststop execution, matching both pinned reference ordering and OCI
+post-deletion timing. Keep the snapshot in memory for hook state/dispatch.
+Metadata, signals, RDT, cgroup and directory-removal errors still return before
+hook execution; no unknown ownership is discarded. This supersedes the earlier
+#17 decision that retained state through hook completion. Once actual resources
+are destroyed, poststop is a separate lifecycle stage with its own diagnostics.
+Hook failures still propagate rather than disappearing, and reference first-hook
+error behavior remains unchanged in this timing increment.
+
+Unresolved conflict: OCI requires warning and remaining-hook/lifecycle
+continuation, whereas pinned runc stops at the first error and returns failure.
+The kernel probe confirms this is real, not just a source inference. Do not
+claim OCI conformance or full hook parity. Investigate a compliant compatibility
+contract separately; do not change default behavior silently or equate successful
+resource destruction with successful hooks. Warning-format detection in the
+probe is only a textual indicator; return/continuation results already disprove
+conformance. Hook timeout and retry cross-products remain additional work.
+
+Validation uses the same private-root binding and native PID/FD/stdio behavior.
+Published observations contain only hook ordinal, boolean directory/state-field
+presence and standard status; no IDs, paths or contents. No unsafe, dependencies,
+lockfiles or isolation changes. The dependency patch reproduces the pinned
+package. Exact committed validation follows.
+
+Exact implementation `46effbc48f66c11a6b4e1e3a855e7a6786622285` passes the
+committed two-hook kernel comparison: deletion ordering matches; the failure
+exit, skipped second hook and OCI conflict remain explicit. Live metadata faults,
+restore/retry and general comparison pass with no retained private resources.
+30 Rust and 14 Python tests plus static gates pass. See the dated poststop
+validation record. AI-generated review checked final history, superseded #17
+rationale, patch reproduction and limited claims; timeout/continuation remains open.
+
+## 2026-10-14 — Cover hook stdin delivery with deadlines (#38)
+
+Evidence: production run_hooks regression on the #35 base supplies 256 KiB of
+bounded annotations to a hook that never reads stdin and exits naturally after
+four seconds. Despite its one-second timeout, the original adapter fails the
+regression after four seconds. The wait deadline starts only after write_all.
+Pinned runc configs.Command.Run starts its timer alongside managed stdin copying
+and kills/waits the owned process on timeout. Independent source audit also
+finds a detached wait thread and bare-PID timeout signaling in rune; no PID-reuse
+attack has been claimed reproduced.
+
+Decision: serialize before spawn, reject negative/unrepresentable timeout before
+spawn, retain one Child owner, use safe nix fcntl on the existing stdin pipe for
+nonblocking writes, and apply one deadline across delivery and exit waiting.
+Close the writer after delivery so EOF consumers finish. On delivery/wait error,
+kill then wait for the direct child; preserve the initiating error and any
+kill/wait failures. BrokenPipe still permits successful early hooks, with actual
+exit status authoritative. No unsafe/dependency/lockfile or isolation changes.
+
+Alternatives: a detached stdin thread can remain blocked after deadline and
+complicates cleanup; a socket changes observable hook stdin type. Keeping the
+old wait thread can race reap with bare-PID signaling. Safe pipe polling keeps
+ownership local and uses a bounded 5 ms sleep; no performance claim follows.
+No timeout still permits an indefinitely running hook, as the contract does.
+Spawn/system uninterruptible waits and descendants remain explicit gaps. This
+change does not resolve OCI/reference poststop warning/continuation conflict.
+
+Development reproduction fails on the unchanged base and passes after the fix.
+The test invokes production dependency code and real processes, with a separate
+bounded worker and finite fixture lifetime; it is not policy simulation. Exact
+committed regressions, kernel comparisons and final evidence follow.
+
+Development kernel comparisons match the deadline and EOF assertions. The
+reference backpressure probe observes two hook processes and one still present
+at immediate observation, alongside concurrent frontend cleanup callbacks;
+rune observes one and it is absent after deletion. An initial fixture incorrectly
+called this observation direct-child reaping and failed the comparison. Corrected
+classification records a concurrency validation gap: no exclusive attribution
+to the direct command or proven reference child leak. Both finite hook processes
+terminate naturally within four seconds if not killed. Production adapter tests
+separately verify the owned child is reaped. No concurrency-parity claim follows.
+
+Exact implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb` passes
+31 Rust tests (plus the explicitly invoked worker), 14 Python tests, static
+gates and dependency patch reproduction. Signed-reference rootless deadline,
+EOF, poststop failure ordering and general kernel comparisons pass their stated
+assertions. Reference callback attribution remains a concurrency validation gap;
+OCI continuation remains a conflict. See the dated hook-deadlines record.
+AI-generated review inspected the production child lifecycle, error propagation,
+no-unsafe boundary, regression limits, history and contemporaneous decision log.
+
+## 2026-10-14 — Integrate cleanup and hook delivery with current main (#40)
+
+Problem: reviewed PRs #33/#36/#37/#39 remain stacked on the already closed
+pre-main train. Combine them with main f8fc760 without discarding descriptor
+input validation, init-security assertions or either history. Publication is not
+delivery; validate the combined revision before main integration.
+
+Decision: merge main into an issue-linked integration branch, preserving both
+ancestries. Resolve the development log by retaining both contemporaneous
+records; update continuity to actual delivered main and current scope. Combine
+fixture runtime-root trace and SELinux-domain result reporting while keeping
+init/exec security assertions. No isolation assertion is removed. Input reader
+and regression additions merge alongside absence/no-op policy and hook deadlines.
+Review the merged implementation, fixtures, patch reproduction and decision
+history; run all relevant exact Rust/static and signed-reference kernel suites.
+
+Broader cleanup/concurrency, poststop OCI/reference continuation, bounded FIFO
+streaming, platform and full-parity scope remains open. Separate PID-file work is
+not imported or modified. AI-generated integration/review; no human review claim.
+
+Hosted #39 Nix failed at the hook regression because the fixture hardcoded
+/usr/bin/python3, absent in the build sandbox. Local and hosted Rust passed;
+this was a test portability defect, not a passing Nix result. Replace the hook
+fixture with an explicitly selected child mode of the same Rust test executable,
+keeping every deadline/EOF/exit/negative-timeout/reaping assertion and the bounded
+outer worker. This needs no interpreter or build/runtime dependency. Do not skip
+checks or weaken the sandbox. The correction is part of combined #40 delivery;
+#39's original failing checks remain recorded. Combined 937db3f passed all stated
+kernel comparisons, metadata faults and input/absence checks before this fixture
+correction. Failed-create invocation used an unsupported results flag and was
+rejected before execution; rerun with its supported interface.
+
+Combined `937db3f294e11ddd47f7f6754581f8fd871fc473` passes 33 Rust/14 Python/
+two label tests and all mandatory static gates, plus seed-42 100000-step policy
+replay. Input/absence, all three hook scenarios, exec/NUMA/preflight/general
+signed-reference comparisons and live metadata fault/retry pass their scoped
+assertions. Init/exec SELinux domain checks both run and pass. The corrected
+sandbox fixture at 805b121 passes Rust/Clippy and failed-create rollback/private
+cleanup. The full review and limitations are in the combined validation record.
+Hosted combined checks and final-head general/hook gates remain required before
+landing; publication alone is not delivery.

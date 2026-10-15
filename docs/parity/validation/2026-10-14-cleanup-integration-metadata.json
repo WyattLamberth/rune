@@ -1,0 +1,47 @@
+{
+  "cases": {
+    "cleanup": "pass",
+    "fifo": "pass",
+    "malformed": "pass",
+    "missing": "pass",
+    "retry": "pass"
+  },
+  "cleanup": {
+    "after": {
+      "entries": 0,
+      "records": {},
+      "statuses": {},
+      "truncated": false
+    },
+    "before": {
+      "entries": 0,
+      "records": {},
+      "statuses": {},
+      "truncated": false
+    },
+    "resources_retained": false
+  },
+  "gaps": [
+    "cgroup-failure",
+    "hook-failure",
+    "interrupted-acquisition",
+    "concurrency",
+    "rootful",
+    "architectures"
+  ],
+  "provenance": "Sequential combined-revision run after signed-reference kernel suites; original fixture report has no revision field.",
+  "rune_revision": "937db3f294e11ddd47f7f6754581f8fd871fc473",
+  "runtime_scope": {
+    "expired_scopes": {},
+    "missing_root_arguments": {
+      "delete": 1
+    },
+    "operations": {
+      "create": 1,
+      "delete": 5,
+      "start": 1,
+      "state": 4
+    }
+  },
+  "scope": "Live rootless rune cleanup-metadata rejection and retry; not runc parity or exhaustive recovery"
+}

@@ -28,12 +28,13 @@ fn seeded_policy_fault_replay() {
         let mut trace = VecDeque::with_capacity(32);
         for step in 0..steps {
             let status = [
+                Status::Absent,
                 Status::Creating,
                 Status::Created,
                 Status::Running,
                 Status::Stopped,
                 Status::Paused,
-            ][(next(&mut rng) % 5) as usize];
+            ][(next(&mut rng) % 6) as usize];
             let action = [
                 Action::Start,
                 Action::Kill,
@@ -46,8 +47,10 @@ fn seeded_policy_fault_replay() {
             let fail = next(&mut rng).is_multiple_of(4);
             let allowed = match action {
                 Action::Start => status == Status::Created,
-                Action::Kill => status != Status::Creating && status != Status::Stopped,
-                Action::KillAll => status != Status::Creating,
+                Action::Kill => {
+                    [Status::Created, Status::Running, Status::Paused].contains(&status)
+                }
+                Action::KillAll => ![Status::Creating, Status::Absent].contains(&status),
                 Action::Delete => status == Status::Stopped,
                 Action::ForceDelete => true,
                 Action::Pause => status == Status::Running,
@@ -62,7 +65,10 @@ fn seeded_policy_fault_replay() {
                 calls += 1;
                 if fail { Err("injected") } else { Ok(()) }
             });
-            let expected = if !allowed {
+            let noop = status == Status::Absent && action == Action::ForceDelete;
+            let expected = if noop {
+                Ok(())
+            } else if !allowed {
                 Err(CommandError::InvalidTransition)
             } else if fail {
                 Err(CommandError::Backend("injected"))
@@ -72,7 +78,7 @@ fn seeded_policy_fault_replay() {
             assert_eq!(result, expected, "seed={seed} step={step} trace={trace:?}");
             assert_eq!(
                 calls,
-                usize::from(allowed),
+                usize::from(allowed && !noop),
                 "seed={seed} step={step} trace={trace:?}"
             );
         }

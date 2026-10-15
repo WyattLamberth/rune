@@ -1,0 +1,48 @@
+{
+  "cases": {
+    "cleanup": "pass",
+    "fifo": "pass",
+    "malformed": "pass",
+    "missing": "pass",
+    "retry": "pass"
+  },
+  "cleanup": {
+    "after": {
+      "entries": 0,
+      "records": {},
+      "statuses": {},
+      "truncated": false
+    },
+    "before": {
+      "entries": 0,
+      "records": {},
+      "statuses": {},
+      "truncated": false
+    },
+    "resources_retained": false
+  },
+  "gaps": [
+    "cgroup-failure",
+    "hook-failure",
+    "interrupted-acquisition",
+    "concurrency",
+    "rootful",
+    "architectures"
+  ],
+  "provenance": "Run in sequential exact-revision validation after committed poststop comparison; fixture report originally has no revision field.",
+  "rune_binary_sha256": "43a9f8c74d3db8e141b4ac70e366b830f1b7e05ebb228bf7b6826cae04f95593",
+  "rune_revision": "46effbc48f66c11a6b4e1e3a855e7a6786622285",
+  "runtime_scope": {
+    "expired_scopes": {},
+    "missing_root_arguments": {
+      "delete": 1
+    },
+    "operations": {
+      "create": 1,
+      "delete": 5,
+      "start": 1,
+      "state": 4
+    }
+  },
+  "scope": "Live rootless rune cleanup-metadata rejection and retry; not runc parity or exhaustive recovery"
+}

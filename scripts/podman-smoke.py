@@ -7,6 +7,7 @@ import tempfile
 import sys
 sys.dont_write_bytecode = True
 from smoke_cleanup import finish_resources, state_summary, run_bounded, public_error
+from smoke_scope import make_runtime, summary
 
 IMAGE = 'docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15'
 # The image can be explicitly overridden for offline testing. The validated
@@ -23,6 +24,7 @@ def main():
     args = parser.parse_args()
     runtime = args.runtime.resolve(strict=True)
     root = Path(tempfile.mkdtemp(prefix='rune-smoke-'))
+    runtime, scope_trace = make_runtime(runtime, root / "state")
     errors = []
     phase = "prepare"
     selinux_available = Path('/sys/fs/selinux/enforce').exists()
@@ -115,7 +117,7 @@ def main():
     if args.results:
         args.results.write_text(json.dumps({'runtime_kind': args.runtime_kind,
             'cases': {'general-kernel': 'pass' if not errors else 'validation_gap'},
-            'cleanup': report, 'phase': phase, 'error_types': [type(error).__name__ for error in errors],
+            'cleanup': report, 'runtime_scope': summary(scope_trace), 'phase': phase, 'error_types': [type(error).__name__ for error in errors],
             'selinux_domain_checks': selinux_checks, 'gaps': ['complete-conformance', 'kernel-leak-enumeration',
                 'interrupted-acquisition', 'concurrency']}, indent=2) + '\n')
     if errors:

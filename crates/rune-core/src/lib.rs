@@ -3,6 +3,7 @@
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Status {
+    Absent,
     Creating,
     Created,
     Running,
@@ -21,6 +22,7 @@ pub enum Action {
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Effect {
+    Noop,
     Start,
     Signal,
     Delete,
@@ -37,6 +39,7 @@ pub fn plan(status: Status, action: Action) -> Result<Effect, InvalidTransition>
     use Effect as E;
     use Status as S;
     match (status, action) {
+        (S::Absent, A::ForceDelete) => Ok(E::Noop),
         (S::Created, A::Start) => Ok(E::Start),
         (S::Created | S::Running | S::Paused, A::Kill | A::KillAll) | (S::Stopped, A::KillAll) => {
             Ok(E::Signal)
@@ -62,6 +65,9 @@ pub fn execute<E>(
     apply: impl FnOnce(Effect) -> Result<(), E>,
 ) -> Result<(), CommandError<E>> {
     let effect = plan(status, action).map_err(|_| CommandError::InvalidTransition)?;
+    if effect == Effect::Noop {
+        return Ok(());
+    }
     apply(effect).map_err(CommandError::Backend)
 }
 
@@ -101,6 +107,7 @@ mod tests {
     #[test]
     fn exhaustive_lifecycle_policy() {
         let states = [
+            Status::Absent,
             Status::Creating,
             Status::Created,
             Status::Running,
@@ -123,7 +130,7 @@ mod tests {
                     Action::Kill => {
                         [Status::Created, Status::Running, Status::Paused].contains(&state)
                     }
-                    Action::KillAll => state != Status::Creating,
+                    Action::KillAll => ![Status::Creating, Status::Absent].contains(&state),
                     Action::Delete => state == Status::Stopped,
                     Action::ForceDelete => true,
                     Action::Pause => state == Status::Running,

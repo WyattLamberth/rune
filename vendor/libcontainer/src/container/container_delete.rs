@@ -92,6 +92,12 @@ impl Container {
             err
         })?;
 
+        // Remove ownership records only after kernel/resource cleanup succeeded.
+        fs::remove_dir_all(&self.root).map_err(|err| {
+            tracing::error!(?err, path = ?self.root, "failed to remove container dir");
+            LibcontainerError::OtherIO(err)
+        })?;
+
         if let Some(hooks) = config.hooks.as_ref() {
             hooks::run_hooks(
                 hooks.poststop().as_ref(),
@@ -105,12 +111,6 @@ impl Container {
                 err
             })?;
         }
-
-        // Remove ownership records only after every required cleanup succeeded.
-        fs::remove_dir_all(&self.root).map_err(|err| {
-            tracing::error!(?err, path = ?self.root, "failed to remove container dir");
-            LibcontainerError::OtherIO(err)
-        })?;
 
         Ok(())
     }

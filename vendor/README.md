@@ -37,3 +37,16 @@ NUMA policy uses a bounded production node parser with merged duplicate ranges,
 a fixed CPU-set-sized node-ID ceiling matching pinned runc, and the existing 4 MiB configuration text
 limit. Create and stored exec snapshots use the same policy preflight before
 container acquisition or tenant setup. These bounds do not prove exhaustive NUMA semantics.
+
+Delete removes runtime ownership state after successful kernel/resource cleanup
+and before poststop hooks, matching pinned runc and OCI deletion timing. Hook
+errors remain observable; pinned reference/spec continuation and warning
+semantics are explicitly unresolved under #35.
+
+Hook stdin is delivered through the existing pipe in nonblocking mode, under the
+same deadline as exit waiting. The writer is closed for EOF consumers. A single
+Child owner kills and reaps on delivery/wait errors and retains cleanup failures;
+negative/unrepresentable deadlines fail before spawning. See issue #38. No
+unsafe code or new dependency is introduced; libc/nix remains a maintained
+adapter dependency trust boundary. Descendant process groups are not proven
+cleaned up by this direct-child change.

@@ -5,6 +5,7 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from smoke_cleanup import finish_resources, run_bounded, public_error
+from smoke_scope import make_runtime, summary
 import tempfile
 import uuid
 
@@ -19,6 +20,7 @@ def main():
     args = parser.parse_args()
     runtime = args.runtime.resolve(strict=True)
     root = Path(tempfile.mkdtemp(prefix='rune-create-rollback-'))
+    runtime, scope_trace = make_runtime(runtime, root / 'state')
     base = ['podman', '--root', str(root / 'store'), '--runroot', str(root / 'run'),
             '--storage-driver', 'vfs', '--runtime', str(runtime),
             '--runtime-flag', f'root={root}/state']

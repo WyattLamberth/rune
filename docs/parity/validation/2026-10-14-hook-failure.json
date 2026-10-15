@@ -1,0 +1,128 @@
+{
+  "cargo_lock_sha256": "026aa1306cf9b6e3c86a6e56a1e1ad2ceb618dc0fecac380a09856f3512fe246",
+  "comparisons": {
+    "deletion-order": "matching_assertions",
+    "failure-exit": "matching_reference_with_OCI_conflict",
+    "remaining-hooks": "reference_spec_conflict",
+    "warning-contract": "reference_spec_conflict"
+  },
+  "development_base": null,
+  "fixtures_sha256": {
+    "poststop-probe.py": "4b09df5aee57e41093f6ed112d8fbdae7882f1b518ff9e468181e276a1023dd5",
+    "smoke_cleanup.py": "835fe5eddb4fe048ad90be27f3df5bbfb216e080f5f1eb7c4dbaa17dc94b2ec8",
+    "smoke_scope.py": "0d46ce2839c70ba4a04af494987ceee20e2706e7dbbac6dfca71ef7fb8fe9c43"
+  },
+  "runc_binary_sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+  "runc_revision": "29dd3dc2b13b4123162e5fe132504bb4b15569f1",
+  "rune_binary_sha256": "cf82208bb6ed0634018743f512d7a3c395e83d8a3cabe87af5c231949d3591cc",
+  "rune_revision": "5a7a6aa88acdacdf7cafc561e01a187b4b2544eb",
+  "runtimes": {
+    "runc": {
+      "exit_code": 0,
+      "results": {
+        "binary_sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+        "cleanup": {
+          "after": {
+            "entries": 0,
+            "records": {},
+            "statuses": {},
+            "truncated": false
+          },
+          "before": {
+            "entries": 0,
+            "records": {},
+            "statuses": {},
+            "truncated": false
+          },
+          "resources_retained": false
+        },
+        "delete_exit_code": 1,
+        "error_count": 0,
+        "hook_process_observations": 0,
+        "image": "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15",
+        "kind": "runc",
+        "observations": [
+          {
+            "slot": 1,
+            "state_directory_present": false,
+            "state_fields_present": true,
+            "status": "stopped"
+          }
+        ],
+        "observed_hooks_absent": true,
+        "oci_contract_satisfied": false,
+        "remaining_hook_invoked": false,
+        "runtime_scope": {
+          "expired_scopes": {},
+          "missing_root_arguments": {
+            "delete": 1
+          },
+          "operations": {
+            "create": 1,
+            "delete": 3,
+            "start": 1
+          }
+        },
+        "scenario": "failure",
+        "scope": "Observed poststop failure/order/continuation; not conformance or complete parity",
+        "state_directory_retained": false,
+        "warning_observed": false,
+        "within_three_seconds": true
+      }
+    },
+    "rune": {
+      "exit_code": 0,
+      "results": {
+        "binary_sha256": "cf82208bb6ed0634018743f512d7a3c395e83d8a3cabe87af5c231949d3591cc",
+        "cleanup": {
+          "after": {
+            "entries": 0,
+            "records": {},
+            "statuses": {},
+            "truncated": false
+          },
+          "before": {
+            "entries": 0,
+            "records": {},
+            "statuses": {},
+            "truncated": false
+          },
+          "resources_retained": false
+        },
+        "delete_exit_code": 1,
+        "error_count": 0,
+        "hook_process_observations": 0,
+        "image": "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15",
+        "kind": "rune",
+        "observations": [
+          {
+            "slot": 1,
+            "state_directory_present": false,
+            "state_fields_present": true,
+            "status": "stopped"
+          }
+        ],
+        "observed_hooks_absent": true,
+        "oci_contract_satisfied": false,
+        "remaining_hook_invoked": false,
+        "runtime_scope": {
+          "expired_scopes": {},
+          "missing_root_arguments": {
+            "delete": 1
+          },
+          "operations": {
+            "create": 1,
+            "delete": 2,
+            "start": 1
+          }
+        },
+        "scenario": "failure",
+        "scope": "Observed poststop failure/order/continuation; not conformance or complete parity",
+        "state_directory_retained": false,
+        "warning_observed": false,
+        "within_three_seconds": true
+      }
+    }
+  },
+  "scope": "Rootless two-hook failure/order; OCI/reference conflict remains open"
+}

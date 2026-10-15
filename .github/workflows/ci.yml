@@ -12,7 +12,7 @@ jobs:
           toolchain: 1.96.1
           components: rustfmt, clippy
       - run: sudo apt-get update && sudo apt-get install -y libseccomp-dev
-      - run: python3 -m unittest discover -s scripts -p test_smoke_cleanup.py
+      - run: python3 -m unittest discover -s scripts -p 'test_smoke_*.py'
       - run: python3 scripts/check-architecture.py
       - run: python3 scripts/parity-inventory.py
       - run: cargo fmt --all -- --check

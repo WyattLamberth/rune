@@ -1,0 +1,47 @@
+{
+  "cases": {
+    "missing": "pass",
+    "malformed": "pass",
+    "fifo": "pass",
+    "retry": "pass",
+    "cleanup": "pass"
+  },
+  "cleanup": {
+    "before": {
+      "entries": 0,
+      "truncated": false,
+      "statuses": {},
+      "records": {}
+    },
+    "after": {
+      "entries": 0,
+      "truncated": false,
+      "statuses": {},
+      "records": {}
+    },
+    "resources_retained": false
+  },
+  "runtime_scope": {
+    "operations": {
+      "create": 1,
+      "start": 1,
+      "state": 4,
+      "delete": 5
+    },
+    "missing_root_arguments": {
+      "delete": 1
+    },
+    "expired_scopes": {}
+  },
+  "scope": "Live rootless rune cleanup-metadata rejection and retry; not runc parity or exhaustive recovery",
+  "gaps": [
+    "cgroup-failure",
+    "hook-failure",
+    "interrupted-acquisition",
+    "concurrency",
+    "rootful",
+    "architectures"
+  ],
+  "rune_revision": "8d8b4a46419463a9daa29374af99fcd543543f2b",
+  "rune_binary_sha256": "67b0f6da7904ba667a9da37534d4166f049b58b9cd935106442d30de4de27e7c"
+}

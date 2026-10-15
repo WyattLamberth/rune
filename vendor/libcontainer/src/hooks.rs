@@ -1,10 +1,11 @@
 use std::collections::HashMap;
 use std::io::{ErrorKind, Write};
+use std::os::fd::AsRawFd;
 use std::os::unix::prelude::CommandExt;
 use std::path::Path;
 use std::{process, thread, time};
 
-use nix::sys::signal;
+use nix::fcntl::{fcntl, FcntlArg, OFlag};
 use nix::unistd::Pid;
 use oci_spec::runtime::{Hook, State as OciState};
 
@@ -21,6 +22,14 @@ pub enum HookError {
     NonZeroExitCode(i32),
     #[error("hook command was killed by a signal")]
     Killed,
+    #[error("hook timeout must be nonnegative and representable")]
+    InvalidTimeout,
+    #[error("hook failure {cause}; child cleanup failed (kill: {kill:?}, wait: {wait:?})")]
+    Cleanup {
+        cause: Box<HookError>,
+        kill: Option<std::io::Error>,
+        wait: Option<std::io::Error>,
+    },
     #[error("failed to execute hook command due to a timeout")]
     Timeout,
     #[error("container state is required to run hook")]
@@ -85,6 +94,20 @@ pub fn run_hooks(
             };
             tracing::debug!("run_hooks envs: {:?}", envs);
 
+            // Encode before spawning so encoding failure cannot abandon a child.
+            let encoded_state =
+                serde_json::to_vec(&oci_state).map_err(HookError::EncodeContainerState)?;
+            let deadline = match hook.timeout() {
+                Some(seconds) => {
+                    let seconds = u64::try_from(seconds).map_err(|_| HookError::InvalidTimeout)?;
+                    Some(
+                        time::Instant::now()
+                            .checked_add(time::Duration::from_secs(seconds))
+                            .ok_or(HookError::InvalidTimeout)?,
+                    )
+                }
+                None => None,
+            };
             let mut hook_process = hook_command
                 .env_clear()
                 .envs(envs)
@@ -93,81 +116,102 @@ pub fn run_hooks(
                 .stderr(process::Stdio::inherit())
                 .spawn()
                 .map_err(HookError::CommandExecute)?;
-            let hook_process_pid = Pid::from_raw(hook_process.id() as i32);
-            // Based on the OCI spec, we need to pipe the container state into
-            // the hook command through stdin.
-            if let Some(stdin) = &mut hook_process.stdin {
-                // We want to ignore BrokenPipe here. A BrokenPipe indicates
-                // either the hook is crashed/errored or it ran successfully.
-                // Either way, this is an indication that the hook command
-                // finished execution.  If the hook command was successful,
-                // which we will check later in this function, we should not
-                // fail this step here. We still want to check for all the other
-                // error, in the case that the hook command is waiting for us to
-                // write to stdin.
-                let encoded_state =
-                    serde_json::to_string(&oci_state).map_err(HookError::EncodeContainerState)?;
-                if let Err(e) = stdin.write_all(encoded_state.as_bytes()) {
-                    if e.kind() != ErrorKind::BrokenPipe {
-                        // Not a broken pipe. The hook command may be waiting
-                        // for us.
-                        let _ = signal::kill(hook_process_pid, signal::Signal::SIGKILL);
-                        return Err(HookError::WriteContainerState(e));
-                    }
-                }
-            }
-
-            let res = if let Some(timeout_sec) = hook.timeout() {
-                // Rust does not make it easy to handle executing a command and
-                // timeout. Here we decided to wait for the command in a
-                // different thread, so the main thread is not blocked. We use a
-                // channel shared between main thread and the wait thread, since
-                // the channel has timeout functions out of the box. Rust won't
-                // let us copy the Command structure, so we can't share it
-                // between the wait thread and main thread. Therefore, we will
-                // use pid to identify the process and send a kill signal. This
-                // is what the Command.kill() does under the hood anyway. When
-                // timeout, we have to kill the process and clean up properly.
-                let (s, r) = std::sync::mpsc::channel();
-                thread::spawn(move || {
-                    let res = hook_process.wait();
-                    let _ = s.send(res);
-                });
-                match r.recv_timeout(time::Duration::from_secs(timeout_sec as u64)) {
-                    Ok(res) => res,
-                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
-                        // Kill the process. There is no need to further clean
-                        // up because we will be error out.
-                        let _ = signal::kill(hook_process_pid, signal::Signal::SIGKILL);
-                        return Err(HookError::Timeout);
-                    }
-                    Err(_) => {
-                        unreachable!();
-                    }
-                }
-            } else {
-                hook_process.wait()
+            let result = deliver_and_wait(&mut hook_process, &encoded_state, deadline);
+            let exit_status = match result {
+                Ok(status) => status,
+                Err(cause) => return Err(terminate_and_reap(&mut hook_process, cause)),
             };
-
-            match res {
-                Ok(exit_status) => match exit_status.code() {
-                    Some(0) => Ok(()),
-                    Some(exit_code) => Err(HookError::NonZeroExitCode(exit_code)),
-                    None => Err(HookError::Killed),
-                },
-                Err(e) => Err(HookError::CommandExecute(e)),
-            }?;
+            match exit_status.code() {
+                Some(0) => {}
+                Some(exit_code) => return Err(HookError::NonZeroExitCode(exit_code)),
+                None => return Err(HookError::Killed),
+            }
         }
     }
 
     Ok(())
 }
 
+// One owner retains Child until it has been reaped. No detached waiter or bare
+// PID signaling can race a reap and accidentally target a reused process ID.
+fn terminate_and_reap(child: &mut process::Child, cause: HookError) -> HookError {
+    let kill = child.kill().err();
+    let wait = child.wait().err();
+    if kill.is_none() && wait.is_none() {
+        cause
+    } else {
+        HookError::Cleanup {
+            cause: Box::new(cause),
+            kill,
+            wait,
+        }
+    }
+}
+
+fn check_deadline(deadline: Option<time::Instant>) -> Result<()> {
+    if deadline.is_some_and(|value| time::Instant::now() >= value) {
+        Err(HookError::Timeout)
+    } else {
+        Ok(())
+    }
+}
+
+fn pause(deadline: Option<time::Instant>) {
+    let interval = time::Duration::from_millis(5);
+    thread::sleep(deadline.map_or(interval, |value| {
+        interval.min(value.saturating_duration_since(time::Instant::now()))
+    }));
+}
+
+fn deliver_and_wait(
+    child: &mut process::Child,
+    state: &[u8],
+    deadline: Option<time::Instant>,
+) -> Result<process::ExitStatus> {
+    if let Some(mut stdin) = child.stdin.take() {
+        // Keep the existing pipe semantics, but never block delivery outside the
+        // deadline. nix exposes safe fcntl; this adds no unsafe code.
+        let flags = fcntl(stdin.as_raw_fd(), FcntlArg::F_GETFL)
+            .map_err(|error| HookError::WriteContainerState(error.into()))?;
+        fcntl(
+            stdin.as_raw_fd(),
+            FcntlArg::F_SETFL(OFlag::from_bits_truncate(flags) | OFlag::O_NONBLOCK),
+        )
+        .map_err(|error| HookError::WriteContainerState(error.into()))?;
+        let mut remaining = state;
+        while !remaining.is_empty() {
+            check_deadline(deadline)?;
+            match stdin.write(remaining) {
+                Ok(0) => {
+                    return Err(HookError::WriteContainerState(std::io::Error::from(
+                        ErrorKind::WriteZero,
+                    )))
+                }
+                Ok(written) => remaining = &remaining[written..],
+                Err(error) if error.kind() == ErrorKind::Interrupted => continue,
+                Err(error) if error.kind() == ErrorKind::WouldBlock => pause(deadline),
+                // A hook may legitimately exit without reading its state. Its
+                // status below remains authoritative, as in the prior adapter.
+                Err(error) if error.kind() == ErrorKind::BrokenPipe => break,
+                Err(error) => return Err(HookError::WriteContainerState(error)),
+            }
+        }
+        // Drop the writer before waiting: hooks consuming all stdin require EOF.
+    }
+    loop {
+        if let Some(status) = child.try_wait().map_err(HookError::CommandExecute)? {
+            return Ok(status);
+        }
+        check_deadline(deadline)?;
+        pause(deadline);
+    }
+}
+
 #[cfg(test)]
 mod test {
     use std::{env, fs};
 
-    use anyhow::{Context, Result, bail};
+    use anyhow::{bail, Context, Result};
     use oci_spec::runtime::HookBuilder;
     use serial_test::serial;
 

@@ -73,7 +73,9 @@ Intel RDT, `--no-new-keyring`, direct `exec --tty` without a process file, and
 reproducible performance baselines, telemetry, and release artifacts remain backlog work.
 PID-file publication errors are not reliably propagated yet (#31), and streamed
 nonregular JSON rejection remains a compatibility/policy conflict (#27).
-This is an experimental usable subset, not complete runc parity or production
+Poststop warning/continuation conflicts with the pinned runc baseline and OCI
+requirements (#35); hook descendants and concurrent callback attribution remain
+unverified. This is an experimental usable subset, not complete runc parity or production
 isolation/concurrency certification.
 
 [OCI support matrix](docs/oci-support.md) · [Architecture](docs/architecture.md) · [security boundary](SECURITY.md) ·

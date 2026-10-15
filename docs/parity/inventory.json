@@ -258,7 +258,12 @@
       "status": "untested"
     },
     {
-      "evidence": [],
+      "evidence": [
+        {
+          "record": "docs/parity/validation/2026-10-14-force-absence.md",
+          "rune_revision": "8d8b4a46419463a9daa29374af99fcd543543f2b"
+        }
+      ],
       "id": "runc:delete.go:command:delete",
       "issue": 12,
       "kind": "command",

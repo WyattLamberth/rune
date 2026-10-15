@@ -1,0 +1,36 @@
+{
+  "cargo_lock_sha256": "026aa1306cf9b6e3c86a6e56a1e1ad2ceb618dc0fecac380a09856f3512fe246",
+  "comparisons": {
+    "complete-absence": "matching_assertions",
+    "partial-ownership": "known_difference"
+  },
+  "development_base": null,
+  "runc_binary_sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+  "runc_revision": "29dd3dc2b13b4123162e5fe132504bb4b15569f1",
+  "rune_binary_sha256": "67b0f6da7904ba667a9da37534d4166f049b58b9cd935106442d30de4de27e7c",
+  "rune_revision": "8d8b4a46419463a9daa29374af99fcd543543f2b",
+  "runtimes": {
+    "runc": {
+      "force_absent_codes": [
+        0,
+        0
+      ],
+      "force_stdout_empty": true,
+      "ordinary_absent_code": 1,
+      "partial_code": 0,
+      "partial_retained": false
+    },
+    "rune": {
+      "force_absent_codes": [
+        0,
+        0
+      ],
+      "force_stdout_empty": true,
+      "ordinary_absent_code": 1,
+      "partial_code": 1,
+      "partial_retained": true
+    }
+  },
+  "scope": "Production CLI/filesystem absence and partial-ownership contract; not kernel isolation",
+  "suite_sha256": "87fdf04c536fe598c764d85d7c6df46084b4d70cd813a4e4e57bb13a6f693647"
+}
