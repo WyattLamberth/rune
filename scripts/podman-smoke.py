@@ -27,6 +27,8 @@ def main():
     runtime, scope_trace = make_runtime(runtime, root / "state")
     errors = []
     phase = "prepare"
+    selinux_available = Path('/sys/fs/selinux/enforce').exists()
+    selinux_checks = {case: 'not-run' if selinux_available else 'unavailable' for case in ['init', 'exec']}
     try:
         base = ['podman', '--root', str(root/'store'), '--runroot', str(root/'run'),
                 '--storage-driver', 'vfs', '--runtime', str(runtime),
@@ -52,7 +54,15 @@ def main():
         assert int(caps.split()[1], 16) == 0, 'capabilities mismatch'
         nnp = call(common+['--security-opt', 'no-new-privileges', args.image, 'sh', '-c', 'grep NoNewPrivs: /proc/self/status'])
         assert int(nnp.split()[1]) == 1, 'privilege policy mismatch'
+        init_seccomp = call(common+[args.image, 'sh', '-c', 'grep Seccomp: /proc/self/status'])
+        assert int(init_seccomp.split()[1]) == 2, 'init seccomp policy mismatch'
+        if selinux_available:
+            selinux_checks['init'] = 'fail'
+            init_label = call(common+[args.image, 'cat', '/proc/self/attr/current']).rstrip('\0')
+            assert ':container_t:' in init_label, 'init SELinux domain mismatch'
+            selinux_checks['init'] = 'pass'
         print('PASS dropped capabilities and no-new-privileges', flush=True)
+        print('PASS init seccomp and conditional SELinux domain', flush=True)
         phase = 'lifecycle'
         cid = call(['create', '--network', 'none', args.image, 'sleep', '120'])
         try:
@@ -62,11 +72,13 @@ def main():
             assert info['State']['Status'] == 'running'
             output = call(['exec', cid, 'sh', '-c', 'grep Seccomp: /proc/self/status; cat /proc/self/attr/current 2>/dev/null || true'])
             assert int(output.splitlines()[0].split()[1]) == 2, 'seccomp policy mismatch'
-            if Path('/sys/fs/selinux/enforce').exists():
+            if selinux_available:
+                selinux_checks['exec'] = 'fail'
                 expected = info['ProcessLabel']
                 actual = output.splitlines()[1].rstrip('\0')
                 assert expected and actual == expected, 'SELinux policy mismatch'
                 assert ':container_t:' in actual, 'SELinux domain mismatch'
+                selinux_checks['exec'] = 'pass'
             call(['exec', cid, 'sh', '-c', 'exit 23'], 23)
             # Exec must not replace the container init identity or state.
             after = json.loads(call(['inspect', cid]))[0]
@@ -105,7 +117,8 @@ def main():
     if args.results:
         args.results.write_text(json.dumps({'runtime_kind': args.runtime_kind,
             'cases': {'general-kernel': 'pass' if not errors else 'validation_gap'},
-            'cleanup': report, 'runtime_scope': summary(scope_trace), 'phase': phase, 'error_types': [type(error).__name__ for error in errors], 'gaps': ['complete-conformance', 'kernel-leak-enumeration',
+            'cleanup': report, 'runtime_scope': summary(scope_trace), 'phase': phase, 'error_types': [type(error).__name__ for error in errors],
+            'selinux_domain_checks': selinux_checks, 'gaps': ['complete-conformance', 'kernel-leak-enumeration',
                 'interrupted-acquisition', 'concurrency']}, indent=2) + '\n')
     if errors:
         raise ExceptionGroup('general smoke validation or cleanup failed; output withheld', errors)

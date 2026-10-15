@@ -1,6 +1,6 @@
 use std::fs;
 use std::os::unix::fs::MetadataExt;
-use std::process::{Child, Command};
+use std::process::{Child, Command, Output, Stdio};
 
 struct OwnedProcess(Child);
 impl Drop for OwnedProcess {
@@ -32,6 +32,109 @@ fn starttime(pid: u32) -> u64 {
         .unwrap()
         .parse()
         .unwrap()
+}
+fn bounded_output(mut command: Command) -> Output {
+    use std::io::Read;
+    let mut child = OwnedProcess(
+        command
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .unwrap(),
+    );
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    let status = loop {
+        if let Some(status) = child.0.try_wait().unwrap() {
+            break status;
+        }
+        if std::time::Instant::now() >= deadline {
+            child.0.kill().unwrap();
+            child.0.wait().unwrap();
+            panic!("OCI input validation exceeded its regression-test deadline");
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    };
+    let mut stdout = Vec::new();
+    let mut stderr = Vec::new();
+    child
+        .0
+        .stdout
+        .take()
+        .unwrap()
+        .read_to_end(&mut stdout)
+        .unwrap();
+    child
+        .0
+        .stderr
+        .take()
+        .unwrap()
+        .read_to_end(&mut stderr)
+        .unwrap();
+    Output {
+        status,
+        stdout,
+        stderr,
+    }
+}
+
+#[test]
+fn fifo_json_inputs_fail_promptly_before_create_or_exec_effects() {
+    for input in ["bundle", "stored", "process"] {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("state");
+        fs::create_dir(&root).unwrap();
+        let mut owned = OwnedProcess(Command::new("sleep").arg("30").spawn().unwrap());
+        let mut command = Command::new(env!("CARGO_BIN_EXE_rune"));
+        command.arg("--root").arg(&root);
+        let path = if input == "bundle" {
+            let bundle = temp.path().join("bundle");
+            fs::create_dir(&bundle).unwrap();
+            command
+                .arg("create")
+                .arg("--bundle")
+                .arg(&bundle)
+                .arg("test");
+            bundle.join("config.json")
+        } else {
+            fixture(&root, owned.0.id(), starttime(owned.0.id()));
+            let stored = root.join("test/rune-config.json");
+            if input == "process" {
+                oci_spec::runtime::Spec::default().save(&stored).unwrap();
+                let supplied = temp.path().join("process.json");
+                command
+                    .arg("exec")
+                    .arg("--process")
+                    .arg(&supplied)
+                    .arg("test");
+                supplied
+            } else {
+                command.args(["exec", "test", "/bin/true"]);
+                stored
+            }
+        };
+        nix::unistd::mkfifo(
+            &path,
+            nix::sys::stat::Mode::S_IRUSR | nix::sys::stat::Mode::S_IWUSR,
+        )
+        .unwrap();
+        let before = fs::read(root.join("test/state.json")).ok();
+        let output = bounded_output(command);
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(
+            String::from_utf8(output.stderr)
+                .unwrap()
+                .contains("regular file")
+        );
+        assert_eq!(fs::read(root.join("test/state.json")).ok(), before);
+        if input == "bundle" {
+            assert!(
+                !root.join("test").exists(),
+                "FIFO validation created ownership records"
+            );
+        }
+        assert!(owned.0.try_wait().unwrap().is_none());
+    }
 }
 #[test]
 fn stale_process_identity_is_observed_as_stopped_and_cannot_be_signalled() {

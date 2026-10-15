@@ -7,7 +7,7 @@ isolation, usability and measured performance decide what stays.
 AI-generated implementation under WyattLamberth's product direction. No human
 review or full OCI conformance is implied. Independent project, not an OpenAI product.
 
-## Current increment
+## Current runtime
 
 Native Rust Linux adapter using the youki `libcontainer` library, not a runtime
 executable wrapper. Supports create/start/state/kill/delete, exec, pause and resume.
@@ -71,6 +71,10 @@ is not a claim that every field is implemented. Unknown fields are rejected;
 Intel RDT, `--no-new-keyring`, direct `exec --tty` without a process file, and
 `--ignore-paused` are rejected. Full feature negotiation, standalone run/spec,
 reproducible performance baselines, telemetry, and release artifacts remain backlog work.
+PID-file publication errors are not reliably propagated yet (#31), and streamed
+nonregular JSON rejection remains a compatibility/policy conflict (#27).
+This is an experimental usable subset, not complete runc parity or production
+isolation/concurrency certification.
 
 [OCI support matrix](docs/oci-support.md) · [Architecture](docs/architecture.md) · [security boundary](SECURITY.md) ·
 [runc parity baseline and gaps](docs/parity/README.md) · [Development log](docs/development-log.md) ·

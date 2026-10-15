@@ -1,16 +1,25 @@
 use anyhow::{Result, bail};
 use oci_spec::runtime::{Process, Spec};
-use std::fs::File;
+use std::fs::OpenOptions;
 use std::io::Read;
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::Path;
 
 const MAX_CONFIG_BYTES: u64 = 4 * 1024 * 1024;
 
 fn read_json<T: serde::de::DeserializeOwned>(path: &Path) -> Result<T> {
+    // Nonblocking open prevents a writerless FIFO from holding a container
+    // lock indefinitely. Inspect the opened descriptor, preserving ordinary
+    // symlinks to regular files without a metadata/open race.
+    let file = OpenOptions::new()
+        .read(true)
+        .custom_flags(nix::fcntl::OFlag::O_NONBLOCK.bits())
+        .open(path)?;
+    if !file.metadata()?.is_file() {
+        bail!("OCI JSON input must be a regular file");
+    }
     let mut bytes = Vec::new();
-    File::open(path)?
-        .take(MAX_CONFIG_BYTES + 1)
-        .read_to_end(&mut bytes)?;
+    file.take(MAX_CONFIG_BYTES + 1).read_to_end(&mut bytes)?;
     if bytes.len() as u64 > MAX_CONFIG_BYTES {
         bail!("configuration exceeds 4 MiB limit");
     }
@@ -111,6 +120,39 @@ pub fn bundle(path: &Path) -> Result<Spec> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn nonregular_process_inputs_are_rejected_and_regular_symlinks_are_supported() -> Result<()> {
+        use std::os::unix::fs::symlink;
+        let dir = tempfile::tempdir()?;
+        assert!(
+            process(dir.path())
+                .unwrap_err()
+                .to_string()
+                .contains("regular file")
+        );
+        assert!(
+            process(Path::new("/dev/null"))
+                .unwrap_err()
+                .to_string()
+                .contains("regular file")
+        );
+        std::fs::create_dir(dir.path().join("rootfs"))?;
+        let mut spec = Spec::default();
+        spec.set_version("1.3.0".into());
+        spec.save(dir.path().join("spec-target.json"))?;
+        for name in ["config.json", "rune-config.json"] {
+            symlink("spec-target.json", dir.path().join(name))?;
+        }
+        std::fs::write(
+            dir.path().join("process-target.json"),
+            serde_json::to_vec(spec.process().as_ref().unwrap())?,
+        )?;
+        symlink("process-target.json", dir.path().join("process.json"))?;
+        assert!(bundle(dir.path()).is_ok());
+        assert!(stored_process(dir.path()).is_ok());
+        assert!(process(&dir.path().join("process.json")).is_ok());
+        Ok(())
+    }
     #[test]
     fn validates_unknown_fields_versions_and_nul() -> Result<()> {
         let dir = tempfile::tempdir()?;

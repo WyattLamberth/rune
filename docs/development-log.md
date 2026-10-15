@@ -401,6 +401,105 @@ context. Exact aggregate evidence and continuation obligations are recorded in
 `docs/parity/validation/2026-10-13-smoke-output-bounds.md`. The branch is isolated
 from the other active rune chat; ongoing ownership selection is pending.
 
+## 2026-10-13 — Reject nonregular OCI JSON before blocking reads (#27)
+
+Evidence: inspected the original alpha File::open-based validation, subsequent
+snapshot/NUMA commits, cleanup metadata's safe-open decision, #2/#14 and pinned
+runc spec.go loadSpec. A private standalone writerless config.json FIFO fixture
+at exact rune `dd06f7dc5f5d33a448f2b9e622cb8499edba21a5` and signed runc v1.5.2
+hits its 500 ms deadline before parsing, without acquiring container records.
+Rune holds the per-container command lock during that open. Supplied process
+and stored exec configuration share the same vulnerable reader.
+
+Decision: open nonblocking and inspect the descriptor's file type before reading
+at most the existing 4 MiB plus sentinel. Reject nonregular JSON inputs explicitly.
+Regular-file symlinks remain supported; descriptor inspection avoids a separate
+path-metadata/open race. No unsafe, dependency, lockfile or deterministic-core
+changes. This does not guarantee bounded latency for arbitrary remote filesystems
+or change the snapshot's existing concurrent-write contract.
+
+Compatibility conflict: pinned runc's ordinary os.Open accepts streamed FIFO
+configuration and can wait indefinitely. Rejecting nonregular inputs is a known
+policy difference, not runc parity. A compliant bounded streaming design remains
+unresolved; a silent indefinite read violates rune's bounded-input requirement.
+Do not mark this input contract verified for complete parity. Alternatives:
+path metadata before open is racy; byte limits alone cannot bound open; supporting
+unlimited writer waits preserves the defect. Rejecting all symlinks adds an
+unnecessary compatibility difference, so inspect the opened regular file instead.
+
+Production CLI regressions have a two-second kill/reap deadline and exercise
+bundle, stored exec and supplied process FIFOs. Rejection creates no container
+records, retains existing state bytes, and leaves an existing owned process alive.
+A reader test rejects directories/devices and accepts regular-file symlinks in
+all three paths. The standalone differential records artifact/source/fixture
+hashes and the known FIFO timeout difference without logs or private paths.
+Development: 31 Rust tests and warnings-denied Clippy pass. Exact committed
+validation, isolated kernel regressions and a versioned compatibility record follow.
+
+Exact implementation `8c8c4e25d27971aa4769f80080b2d506c88d5599` passes all 31 Rust
+tests, formatting, warnings-denied Clippy, architecture/inventory and ten Python
+regressions. Standalone signed-reference differential shows four matching rejection
+outcomes and the documented FIFO policy difference. Rootless exec/NUMA and
+failed-create rollback regressions pass with their previous scoped results.
+Versioned evidence and the explicit parity conflict are recorded in
+`docs/parity/validation/2026-10-13-config-input.md`; current continuity and matrix
+notes retain the unresolved streaming obligation. AI-generated review confirms
+descriptor verification, regular-symlink compatibility, state preservation and
+prior decisions. Local Nix remains unavailable; verify hosted final-head checks.
+
+## 2026-10-14 — Finish delivery by integrating the validated alpha (#30)
+
+Problem: main a9ba97984ccc2c9fedb538e7a10c41070b5df91a still contained only
+AGENTS.md, LICENSE and README.md. Eleven stacked PRs held the implementation;
+publication and branch tests had been reported as progress without completing
+main integration. The user identified the gap. This is a delivery workflow defect,
+not evidence that branch implementation or validation had reached main.
+
+Decision: combine the current hardened alpha through c614c12 with the sibling
+cleanup-evidence documentation at 763740e, preserve both commit histories and
+exact records, and land one reviewed/validated integration revision. Reconcile
+continuity to reflect the delivery boundary and document known alpha limitations
+in README. Validate the exact combined candidate before landing, then inspect and
+validate main, reconcile the superseded stack and Linear, and record its revision.
+Implementation and integration review are AI-generated; no human review implied.
+
+Alternatives: merging only the original alpha would deliver older code lacking
+already validated fixes. Continuing to add branches repeats the delivery gap.
+Squashing the entire stack would discard coherent implementation history and
+rationale; preserve ancestry and a merge that contains the cleanup record fork.
+The fork changes only documentation; production code remains identical to the
+validated nonregular-input head. No isolation or acceptance criterion is weakened.
+
+Review: inspected command dispatch and ID/lock/storage boundaries, bounded
+snapshot/process composition, production policy replay with seed/step/trace,
+owned process/cleanup tests, backend provenance/local patch and mandatory gates.
+The vendored maintained dependency's existing unsafe internals remain an explicit
+trust boundary; first-party crates forbid unsafe. Complete field and race coverage
+is still absent. The native run audit also found silent PID-file write errors;
+#31 records source-only evidence and atomic-publication/owned-rollback acceptance.
+Do not invent a kernel reproduction or hide that known experimental limitation.
+All parity, cleanup, concurrency, streamed-input and platform gaps stay open.
+
+Integration acceptance review found that the broad runner explicitly probed
+exec seccomp/SELinux but lacked its own init seccomp mode/domain assertion.
+Add init probes to the disposable run fixtures before calling the alpha acceptance
+complete. Existing capability and no-new-privileges probes already exercise init.
+The conditional SELinux domain assertion is not exhaustive MCS/denial evidence;
+seccomp mode 2 proves filter installation, not all policy actions. Preserve those
+limits in the final record. This changes validation only, not runtime semantics.
+
+Combined candidate db3685c passes 31 Rust tests, ten Python fault tests, two label
+tests, all static gates, input/exec/NUMA comparisons and failed-create rollback.
+The checksum-pinned dependency patch exactly reproduces 73 Rust/TOML files.
+Release candidate 300fc4c passes the complete disposable rootless alpha smoke,
+including newly explicit init security and conditional SELinux results (both
+init/exec domain checks ran and passed), plus confirmed cleanup. These are exact
+scoped results, not complete conformance, denial, concurrency or recovery proof.
+Versioned aggregate records and combined AI-generated review are in
+`docs/parity/validation/2026-10-14-integration.md`. Final-head/hosted gates and the
+actual main delivery revision must be checked and recorded before calling this
+increment delivered. Earlier failing cleanup records and all broader gaps remain.
+
 ## 2026-10-14 — Reconcile completed smoke bounds before cleanup tracing (#17)
 
 The separate active chat completed PR #26 at
@@ -596,3 +695,23 @@ assertions. Reference callback attribution remains a concurrency validation gap;
 OCI continuation remains a conflict. See the dated hook-deadlines record.
 AI-generated review inspected the production child lifecycle, error propagation,
 no-unsafe boundary, regression limits, history and contemporaneous decision log.
+
+## 2026-10-14 — Integrate cleanup and hook delivery with current main (#40)
+
+Problem: reviewed PRs #33/#36/#37/#39 remain stacked on the already closed
+pre-main train. Combine them with main f8fc760 without discarding descriptor
+input validation, init-security assertions or either history. Publication is not
+delivery; validate the combined revision before main integration.
+
+Decision: merge main into an issue-linked integration branch, preserving both
+ancestries. Resolve the development log by retaining both contemporaneous
+records; update continuity to actual delivered main and current scope. Combine
+fixture runtime-root trace and SELinux-domain result reporting while keeping
+init/exec security assertions. No isolation assertion is removed. Input reader
+and regression additions merge alongside absence/no-op policy and hook deadlines.
+Review the merged implementation, fixtures, patch reproduction and decision
+history; run all relevant exact Rust/static and signed-reference kernel suites.
+
+Broader cleanup/concurrency, poststop OCI/reference continuation, bounded FIFO
+streaming, platform and full-parity scope remains open. Separate PID-file work is
+not imported or modified. AI-generated integration/review; no human review claim.

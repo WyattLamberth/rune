@@ -123,3 +123,16 @@ mode/flag preflight rejection, and three safe kernel negative configurations.
 It does not verify every mode, flag, syntax, platform or concurrency cross-product.
 See `validation/2026-10-12-numa-bounds.md` and #22/#23/#14. No inventory entry
 is fully verified. Source declarations still require exhaustive semantic cases.
+
+## JSON input policy conflict
+
+[#27](https://github.com/WyattLamberth/rune/issues/27) records nonregular JSON
+rejection at `8c8c4e25d27971aa4769f80080b2d506c88d5599`. A nonblocking descriptor
+open and regular-file check cover bundle, supplied process and stored exec reads,
+preserving regular-file symlinks. Pinned runc accepts streamed FIFO input and can
+block indefinitely. Rune explicitly rejects it under its finite-input contract.
+This remains an unresolved compatibility/principle conflict, not verified parity.
+[Exact evidence](validation/2026-10-13-config-input.md) distinguishes standalone
+process/filesystem rejection from separate focused kernel regressions. #2/#14
+retain the obligation to investigate a compliant streaming design and expand the
+semantic input matrix. No source inventory entry is promoted to verified.

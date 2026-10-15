@@ -1,0 +1,75 @@
+{
+  "cargo_lock_sha256": "026aa1306cf9b6e3c86a6e56a1e1ad2ceb618dc0fecac380a09856f3512fe246",
+  "comparisons": {
+    "device-symlink": "matching-rejection",
+    "directory": "matching-rejection",
+    "malformed-regular": "matching-rejection",
+    "malformed-regular-symlink": "matching-rejection",
+    "writerless-fifo": "documented-policy-difference"
+  },
+  "deadline_seconds": 0.5,
+  "helper_sha256": "835fe5eddb4fe048ad90be27f3df5bbfb216e080f5f1eb7c4dbaa17dc94b2ec8",
+  "reference_source_build_reproduced": false,
+  "runc_binary_sha256": "599f6f94ff8c5057241eff0d54c3c74f95c34935b6457b33fe545defc61e9488",
+  "runc_revision": "29dd3dc2b13b4123162e5fe132504bb4b15569f1",
+  "rune_binary_sha256": "1336ec4315586002f1c7cf6b6cb77327072cad72b9fdf780757b68b412cd6533",
+  "rune_revision": "db3685c91bc699a850a61b96d64c1f4939f21235",
+  "runtimes": {
+    "runc": {
+      "device-symlink": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": false
+      },
+      "directory": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": false
+      },
+      "malformed-regular": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": false
+      },
+      "malformed-regular-symlink": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": false
+      },
+      "writerless-fifo": {
+        "container_records_created": false,
+        "outcome": "timeout",
+        "regular_file_rejection": false
+      }
+    },
+    "rune": {
+      "device-symlink": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": true
+      },
+      "directory": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": true
+      },
+      "malformed-regular": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": false
+      },
+      "malformed-regular-symlink": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": false
+      },
+      "writerless-fifo": {
+        "container_records_created": false,
+        "outcome": "rejected",
+        "regular_file_rejection": true
+      }
+    }
+  },
+  "scope": "Standalone input rejection; no kernel isolation or complete parity claim.",
+  "suite_sha256": "c6da9d08fb97ec3460abe4b9f1f6d74fe7bb81a1800af8999343df87826dab8e"
+}

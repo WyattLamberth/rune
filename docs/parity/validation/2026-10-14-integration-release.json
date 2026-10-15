@@ -1,0 +1,46 @@
+{
+  "cargo_lock_sha256": "026aa1306cf9b6e3c86a6e56a1e1ad2ceb618dc0fecac380a09856f3512fe246",
+  "flake_lock_sha256": "4808b0ca576d35af0ed709dd1ca56faeef3060c6df40a530912492cb2217943d",
+  "helper_sha256": "835fe5eddb4fe048ad90be27f3df5bbfb216e080f5f1eb7c4dbaa17dc94b2ec8",
+  "image": "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15",
+  "podman": "podman version 5.8.7",
+  "profile": "cargo build --release --locked",
+  "results": {
+    "cases": {
+      "general-kernel": "pass"
+    },
+    "cleanup": {
+      "after": {
+        "entries": 0,
+        "records": {},
+        "statuses": {},
+        "truncated": false
+      },
+      "before": {
+        "entries": 0,
+        "records": {},
+        "statuses": {},
+        "truncated": false
+      },
+      "resources_retained": false
+    },
+    "error_types": [],
+    "gaps": [
+      "complete-conformance",
+      "kernel-leak-enumeration",
+      "interrupted-acquisition",
+      "concurrency"
+    ],
+    "phase": "completed",
+    "runtime_kind": "rune",
+    "selinux_domain_checks": {
+      "exec": "pass",
+      "init": "pass"
+    }
+  },
+  "rune_binary_sha256": "cc540999f167b08fc082c181c66440d76db2ff06bc549c6bc7278c4ed4dffef7",
+  "rune_revision": "300fc4c3e35cf99d8533b94533c474fac3c36e84",
+  "rustc": "rustc 1.96.1 (31fca3adb 2026-06-26)",
+  "scope": "Experimental rootless alpha release smoke; not full OCI/runc conformance, isolation denial or concurrency proof.",
+  "suite_sha256": "abab9a3e3b17d6a8e1a6be249b92ef239932c88c934a65a66215dbad418e716f"
+}

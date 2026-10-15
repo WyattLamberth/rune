@@ -2,23 +2,30 @@
 
 Updated 2026-10-14; AI-generated engineering. Goal remains active.
 
-## Current checkpoint — poststop contract investigation
+## Current checkpoint — combine cleanup and hook delivery (#40 / RMU-42)
 
-Primary checkout is on `codex/38-hook-deadlines`, stacked on published PR #37
-(poststop ordering, final `956a82997b672be871575c49e57f23c22c6b81be`). PR #37 hosted Rust/Nix
-CI passes. #35 / RMU-40 remains open for
-OCI/reference warning and continuation conflict.
+Primary checkout is on `codex/40-cleanup-integration`, combining main
+`f8fc760029a051e80f7ae1f21884ca751e56d39d` with cleanup PRs #33/#36/#37/#39.
+Preserve both histories and main's nonregular-input validation and init-security
+assertions. Resolve documentation chronology and combine runtime-scope and
+SELinux result fields. All exact combined gates, patch reproduction and kernel
+suites follow before delivery; branch publication is not main integration.
 
-Current #38 / RMU-41 fixes a reproduced one-second hook timeout that instead
-runs four seconds while stdin blocks. Safe nonblocking pipe writes and one Child
-owner cover delivery and wait, close stdin for EOF, and kill/reap while preserving
-cleanup errors. Six real-process production adapter cases pass; development
-rootless deadline/EOF comparisons match. Runc observes two hooks alongside a
-frontend callback; immediate process absence differs, classified as concurrency
-validation gap without direct-child attribution. Exact implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb` passes
-31 Rust/14 Python tests, static gates, deadline/EOF/failure and general kernel
-comparisons; evidence is `docs/parity/validation/2026-10-14-hook-deadlines.md`.
-Final head validation and publication follow. No retained runtime records/recovery locators remain.
+PR #39 final `341751002725893fd2cada2843803f3a6a69d3c2` passes local Rust/static
+and deadline/EOF comparisons. Implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb`
+also passes all stated kernel regressions. Inspect hosted CI before integration.
+PR #37 final `956a82997b672be871575c49e57f23c22c6b81be` passes hosted Rust/Nix.
+OCI/reference poststop continuation conflict (#35) and concurrent callback hook
+attribution (#17) remain open. No retained runtime records/recovery locators.
+
+## Prior main integration — alpha and nonregular inputs
+
+PR #32 merged the alpha/hardening; main is no longer documentation-only.
+Main's exact evidence is `docs/parity/validation/2026-10-14-integration.md`.
+#27 descriptor-based nonblocking regular-input validation and tests remain
+required; streamed FIFO acceptance differs from runc and is an unresolved policy
+conflict. Init seccomp and conditional SELinux domain assertions remain mandatory
+in the broad runner; they are not exhaustive action/MCS/denial coverage.
 
 Prior #34 / RMU-39 is published in PR #36 at
 `ca9e25b357bd7fa4eb18808eb17d1a26c6190e99`; hosted Rust/Nix pass. Fully absent
@@ -131,11 +138,12 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Complete exact #38 deadline/EOF, poststop failure, metadata/general regression
-   validation, publish the increment and reconcile hosted CI.
+1. Finish exact combined #40 validation, AI-generated history/code/decision
+   review, hosted CI, main integration and authoritative delivery reconciliation.
 2. Continue #35 OCI/reference continuation conflict and #17 concurrent delete /
-   callback hook attribution, resource failures and interrupted acquisition.
-3. Reconcile main/other chat before integration of open #33/#36/#37.
+   callback attribution, resource failures and interrupted acquisition.
+3. Keep the other chat's separate #31 PID-file work isolated; inspect main before
+   integrating and do not send cross-chat messages without human authorization.
 
 Full parity remains unproven and goal active. Inspect current Git/PR/Linear and
 private recovery locators; no retained test resource remains at this validation.
