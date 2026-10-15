@@ -2,15 +2,19 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — fully absent forced deletion
+## Current checkpoint — poststop contract investigation
 
-#34 / RMU-39, branch `codex/34-force-delete-absent`, stacked on callback scope
-PR #33. Implementation `8d8b4a46419463a9daa29374af99fcd543543f2b` adds internal
+Primary checkout is now on clean branch `codex/35-poststop-contract`, based on
+completed #34 / RMU-39 increment published as PR #36 (stacked on #33).
+Implementation `8d8b4a46419463a9daa29374af99fcd543543f2b` adds internal
 Absent/Noop production policy, no adapter invocation for forced full absence,
 and preserves all partial/corrupt/nonregular ownership errors. 30 Rust tests,
 static gates, default/seed-42 100000-step replay, standalone reference comparison,
 live metadata faults/restore/retry and general kernel comparison pass. Evidence:
-`docs/parity/validation/2026-10-14-force-absence.md`. Finish final publication.
+`docs/parity/validation/2026-10-14-force-absence.md`. Final PR head
+`ca9e25b357bd7fa4eb18808eb17d1a26c6190e99` also passes Rust/static, standalone
+absence comparison and live metadata cleanup. Hosted CI is pending. No active
+test process or retained resource remains. No hook implementation change yet.
 
 ## Prior increment — callback runtime-root binding
 
@@ -120,7 +124,7 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach #34 after final-head gates and reconcile RMU-39.
+1. Reconcile PR #36 hosted CI; it is published/attached and RMU-39 is In Review.
 2. Establish a two-hook kernel differential under #35 / RMU-40: OCI poststop
    warning/remaining-hook continuation disagrees with pinned reference handling.
    Preserve errors and record a compliant compatibility design before changing it.
