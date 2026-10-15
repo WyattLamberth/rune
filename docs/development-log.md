@@ -479,3 +479,11 @@ is still absent. The native run audit also found silent PID-file write errors;
 #31 records source-only evidence and atomic-publication/owned-rollback acceptance.
 Do not invent a kernel reproduction or hide that known experimental limitation.
 All parity, cleanup, concurrency, streamed-input and platform gaps stay open.
+
+Integration acceptance review found that the broad runner explicitly probed
+exec seccomp/SELinux but lacked its own init seccomp mode/domain assertion.
+Add init probes to the disposable run fixtures before calling the alpha acceptance
+complete. Existing capability and no-new-privileges probes already exercise init.
+The conditional SELinux domain assertion is not exhaustive MCS/denial evidence;
+seccomp mode 2 proves filter installation, not all policy actions. Preserve those
+limits in the final record. This changes validation only, not runtime semantics.
