@@ -2,17 +2,22 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — callback runtime-root binding
+## Current increment — fully absent forced deletion
 
-GitHub #17 / RMU-33, primary checkout branch `codex/17-native-cleanup-trace`,
-combines completed PR #26 bounds and PR #28 cleanup evidence. Implementation
-`26074b5492ed2f7ff28ce31c013bb36c8cad1623` binds private roots for conmon
-callbacks using execv, preserving PID/descriptors/stdio. Test-child deadline
-follow-up is `22232ce`. 29 Rust/14 fixture tests, static/label gates, all three
-reference kernel comparisons and failed-create cleanup pass. Both general cases
-observe one omitted-root delete and strict successful cleanup after binding.
-Evidence: `docs/parity/validation/2026-10-14-runtime-scope.md`. Finish final
-checks/publication, then continue native cleanup crash/concurrency acceptance.
+#34 / RMU-39, branch `codex/34-force-delete-absent`, stacked on callback scope
+PR #33. Implementation `8d8b4a46419463a9daa29374af99fcd543543f2b` adds internal
+Absent/Noop production policy, no adapter invocation for forced full absence,
+and preserves all partial/corrupt/nonregular ownership errors. 30 Rust tests,
+static gates, default/seed-42 100000-step replay, standalone reference comparison,
+live metadata faults/restore/retry and general kernel comparison pass. Evidence:
+`docs/parity/validation/2026-10-14-force-absence.md`. Finish final publication.
+
+## Prior increment — callback runtime-root binding
+
+PR #33, implementation `26074b5492ed2f7ff28ce31c013bb36c8cad1623`, final
+`6cbcc7aafb82e2f0d44e4f3d33039e8f4537104a`; hosted Rust/Nix pass. Both general
+cases observe omitted-root deletes, bind scope and pass strict cleanup. This
+fixes fixture routing, not complete kernel recovery/concurrency.
 
 ## Prior increment — cleanup diagnostics and output bounds
 
@@ -115,14 +120,14 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/attach callback-scope increment after exact final-head checks.
-2. Continue native interrupted/resource-failure/concurrent cleanup acceptance
-   under #17; consistent fixture roots repair plumbing, not the full lifecycle.
-3. Reconcile #27 when its separate active chat finishes; continue recognized OCI
-   field audit #14 and full conformance/semantic matrix #13.
-4. Review coherent PR train integration with exact delivered-revision validation.
+1. Publish/attach #34 after final-head gates and reconcile RMU-39.
+2. Establish a two-hook kernel differential under #35 / RMU-40: OCI poststop
+   warning/remaining-hook continuation disagrees with pinned reference handling.
+   Preserve errors and record a compliant compatibility design before changing it.
+3. Continue #17 kernel resource failures, interrupted acquisition and concurrency.
+4. Reconcile latest main/other active chat before integration. It integrated the
+   alpha/hardening in PR #32 and handles separate implementation work. Keep own
+   branch/checkouts isolated and do not send cross-chat messages without authority.
 
-PR train includes #10, #15, #18, #19, #20, #21, #24, #25, #28 and #26.
-The goal remains active and full parity unproven. Private fixture launchers and
-trace inputs remain ignored; no retained resource locator remains at validation.
-Always check current Git/PR/Linear/recovery state before continuing.
+Full parity remains unproven and goal active. Inspect current Git/PR/Linear and
+private recovery locators; no retained test resource remains at this validation.
