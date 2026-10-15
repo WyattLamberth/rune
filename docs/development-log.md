@@ -446,3 +446,36 @@ Versioned evidence and the explicit parity conflict are recorded in
 notes retain the unresolved streaming obligation. AI-generated review confirms
 descriptor verification, regular-symlink compatibility, state preservation and
 prior decisions. Local Nix remains unavailable; verify hosted final-head checks.
+
+## 2026-10-14 — Finish delivery by integrating the validated alpha (#30)
+
+Problem: main a9ba97984ccc2c9fedb538e7a10c41070b5df91a still contained only
+AGENTS.md, LICENSE and README.md. Eleven stacked PRs held the implementation;
+publication and branch tests had been reported as progress without completing
+main integration. The user identified the gap. This is a delivery workflow defect,
+not evidence that branch implementation or validation had reached main.
+
+Decision: combine the current hardened alpha through c614c12 with the sibling
+cleanup-evidence documentation at 763740e, preserve both commit histories and
+exact records, and land one reviewed/validated integration revision. Reconcile
+continuity to reflect the delivery boundary and document known alpha limitations
+in README. Validate the exact combined candidate before landing, then inspect and
+validate main, reconcile the superseded stack and Linear, and record its revision.
+Implementation and integration review are AI-generated; no human review implied.
+
+Alternatives: merging only the original alpha would deliver older code lacking
+already validated fixes. Continuing to add branches repeats the delivery gap.
+Squashing the entire stack would discard coherent implementation history and
+rationale; preserve ancestry and a merge that contains the cleanup record fork.
+The fork changes only documentation; production code remains identical to the
+validated nonregular-input head. No isolation or acceptance criterion is weakened.
+
+Review: inspected command dispatch and ID/lock/storage boundaries, bounded
+snapshot/process composition, production policy replay with seed/step/trace,
+owned process/cleanup tests, backend provenance/local patch and mandatory gates.
+The vendored maintained dependency's existing unsafe internals remain an explicit
+trust boundary; first-party crates forbid unsafe. Complete field and race coverage
+is still absent. The native run audit also found silent PID-file write errors;
+#31 records source-only evidence and atomic-publication/owned-rollback acceptance.
+Do not invent a kernel reproduction or hide that known experimental limitation.
+All parity, cleanup, concurrency, streamed-input and platform gaps stay open.

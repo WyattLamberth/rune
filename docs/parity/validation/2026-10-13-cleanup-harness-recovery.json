@@ -1,0 +1,26 @@
+[
+  {
+    "candidate_revision": "7a609bc99bae0da2c8be0d89a5d55b5cc98289e8",
+    "runtime_kind": "runc",
+    "status_counts": {
+      "stopped": 1
+    },
+    "native_delete_successes": 1,
+    "cleanup": {
+      "before": {
+        "entries": 0,
+        "truncated": false,
+        "statuses": {},
+        "records": {}
+      },
+      "after": {
+        "entries": 0,
+        "truncated": false,
+        "statuses": {},
+        "records": {}
+      },
+      "resources_retained": false
+    },
+    "error_count": 0
+  }
+]

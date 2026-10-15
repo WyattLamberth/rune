@@ -1,8 +1,26 @@
 # Continuous rune work checkpoint
 
-Updated 2026-10-13; AI-generated engineering. Goal remains active.
+Updated 2026-10-14; AI-generated engineering. Work resumed by the user.
 
-## Current increment — nonregular JSON input (#27 / RMU-36)
+## Current increment — integrate the alpha into main (#30 / RMU-37)
+
+Main at a9ba97984ccc2c9fedb538e7a10c41070b5df91a contains only documentation.
+Eleven published PRs were mistakenly treated as the delivery boundary. The user
+identified this gap; adding features is now secondary to finishing integration.
+Branch codex/30-integrate-alpha combines the full validated stack through
+c614c12ee338271d14c86447a7b4fd1c09b94a35 and cleanup-evidence documentation
+763740e8fd6bf024781af9c697d7f6b7591a1f28. Runtime code is unchanged by that merge.
+Preserve both histories and all exact evidence. Review the combined candidate,
+run exact local/static/kernel gates, wait for hosted Rust/Nix, then land and
+record the actual main revision. Reconcile the superseded PR stack and Linear.
+Do not call publication delivery or imply human review.
+
+Known alpha gaps remain: #17 cleanup/concurrency/recovery; #31 PID-file failure
+handling (source-only finding); #27 streamed-input policy conflict; #11–#14 full
+semantic inventory, CLI/field support and conformance/environment coverage.
+Complete parity is unproven; integration must not close those parent issues.
+
+## Prior increment — nonregular JSON input (#27 / RMU-36)
 
 Branch codex/27-nonregular-config, stacked on PR #26. Exact implementation
 8c8c4e25d27971aa4769f80080b2d506c88d5599 uses nonblocking open and verifies the
@@ -11,8 +29,8 @@ remain supported. 31 Rust tests, static gates, ten Python regressions,
 standalone input differential, focused exec/NUMA kernel differentials and
 failed-create rollback pass. Evidence: docs/parity/validation/2026-10-13-config-input.md.
 Runc streamed FIFO acceptance conflicts with rune's bounded-input requirement;
-that unresolved conflict prevents complete parity. Final evidence/publication
-checks follow; local Nix remains unavailable.
+that unresolved conflict prevents complete parity. PR #29 final head c614c12ee338271d14c86447a7b4fd1c09b94a35 passes hosted
+Rust/Nix and exact local/input/exec/NUMA checks. Local Nix is unavailable.
 
 ## Prior increment — smoke output bounds (#17 / RMU-33)
 
@@ -112,16 +130,14 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Finish final-head validation/publication for #27; retain the streamed-input
-   compatibility conflict and investigate compliant bounded streaming behavior.
-2. Reconcile the other active rune chat's #17 cleanup-ordering investigation before
-   working on it; root cause, interrupted acquisition and concurrency remain open.
-3. Review and integrate the validated PR train, preserving decisions and exact
-   delivered-revision evidence. Do not infer integration from green branch checks.
-4. Expand recognized-field audit #14 and exhaustive semantic/environment cases
-   under #11/#13. Zero source inventory entries are fully verified.
+1. Finish exact candidate validation and integration into main under #30; record
+   the delivered revision, close superseded PRs and update Linear honestly.
+2. Resume #31 PID-file atomic publication/failure rollback, then native run
+   parity; preserve cleanup failures rather than falsely reporting success.
+3. Reconcile the other active rune chat's #17 tracing before touching that work.
+4. Expand #11–#14 exhaustive parity cases, compliant streaming-input design and
+   environment coverage. Zero inventory entries are fully verified.
 
-The isolated branch used here is codex/27-nonregular-config. Inspect current Git,
-GitHub and Linear rather than relying on this checkpoint's commit pointers as
-final PR head. Private test resources and reference inputs stay ignored. All
-private recovery resources created by this chat are cleaned.
+Inspect live Git/GitHub/Linear state before resuming; implementation SHA pointers
+are not a substitute for delivered main evidence. Private test resources and
+reference inputs remain ignored. Never reset shared Podman storage or defaults.
