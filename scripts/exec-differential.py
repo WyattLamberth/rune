@@ -50,6 +50,7 @@ def main():
               "scope": "Rootless " + args.suite + " exec kernel subset; not complete conformance or parity.",
               "runtimes": {}, "comparisons": {}}
     report["suite_auxiliary_sha256"] = {"smoke_cleanup.py": sha256(ROOT / "scripts/smoke_cleanup.py")}
+    report["suite_auxiliary_sha256"]["smoke_scope.py"] = sha256(ROOT / "scripts/smoke_scope.py")
     with tempfile.TemporaryDirectory(prefix="rune-exec-differential-") as directory:
         for kind, binary in (("runc", reference), ("rune", rune)):
             output = Path(directory) / (kind + ".json")

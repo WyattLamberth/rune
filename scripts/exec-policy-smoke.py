@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 sys.dont_write_bytecode = True
 from smoke_cleanup import finish_resources, run_bounded, public_error
+from smoke_scope import make_runtime, summary
 import tempfile
 
 IMAGE = "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15"
@@ -22,6 +23,7 @@ def main():
     args = parser.parse_args()
     runtime = args.runtime.resolve(strict=True)
     root = Path(tempfile.mkdtemp(prefix="rune-exec-policy-"))
+    runtime, scope_trace = make_runtime(runtime, root / 'state')
     base = ["podman", "--root", str(root / "store"), "--runroot", str(root / "run"),
             "--storage-driver", "vfs", "--runtime", str(runtime),
             "--runtime-flag", f"root={root}/state"]
@@ -96,7 +98,7 @@ def main():
             Path(__file__).resolve().parents[1] / 'work/smoke-recovery')
         cases["cleanup"] = "pass" if len(errors) == cleanup_errors else "fail"
     if args.results:
-        args.results.write_text(json.dumps({"runtime_kind": args.runtime_kind, "cases": cases, "cleanup": cleanup_report,
+        args.results.write_text(json.dumps({"runtime_kind": args.runtime_kind, "cases": cases, "cleanup": cleanup_report, "runtime_scope": summary(scope_trace),
             "known_differences": ["process-file-policy", "process-file-conflict"],
             "gaps": ["apparmor-denial", "rootful", "architectures", "complete-conformance"]}, indent=2) + "\n")
     if errors:

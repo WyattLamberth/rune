@@ -418,3 +418,40 @@ different root, and ContainerRun can discard its removal error while preserving
 workload exit status. Verify actual requests before attributing the original
 failure. The next fixture must guard private scope before invoking native runtime
 commands, preserving PID/FD behavior and every isolation check.
+
+## 2026-10-14 — Keep conmon callbacks in the private runtime scope (#17)
+
+Evidence: source inspection at Podman 5.8.7
+`c593b672bf3db1173aebea565ebf1a724ea196dc` finds CreateExitCommandArgs forwards
+the runtime executable but not per-invocation runtime flags. Controlled request
+traces in two development comparisons confirm delete calls omit the private
+root argument for both rune and the signed pinned runc. Earlier --runtime-flag
+fixtures therefore did not keep conmon cleanup in their intended state scope.
+Podman can log removal errors and discard registry records, so that omission
+provides a concrete mechanism for sporadic leftovers. The original unrecorded
+rune failure still cannot be attributed retrospectively with certainty.
+
+Decision: bind the fixture's explicit private state root in a generated runtime
+launcher for every native invocation, including callbacks. Reject conflicting or
+duplicate root arguments and expired/non-owned scopes. Use execv, preserving
+PID, inherited descriptors and stdio; this is test fixture configuration, not
+rune delegating execution to runc. Trace only operation/boolean scope categories,
+under a 64 KiB bound with regular/no-follow descriptors; publish aggregate counts
+without IDs, paths or workload contents. Keep launcher/trace artifacts privately
+under ignored work so callbacks cannot fall into global default state roots.
+Apply the binding to general, exec, NUMA and failed-create fixtures.
+
+Alternatives: changing global defaults or abandoning private roots violates the
+disposable-resource contract. Sleeping until leftovers disappear hides root
+misrouting and does not repair callback configuration. Additional parent
+processes/captured native stdio could alter runtime PID/descriptor behavior, so
+use execv and confirm the production fixture preserves both with a real owned
+process/descriptor regression. No runtime policy, unsafe, dependencies, locks or
+isolation checks change. Scope requests remain kernel integration evidence, not
+policy simulation or exhaustive concurrency validation.
+
+Development: two comparisons pass the full general kernel suite and strict
+cleanup for both runtimes. The second records two missing-root deletes for runc
+and one for rune; each is bound to its private root before native execution.
+Four fixture contract tests plus ten existing cleanup tests pass. Exact committed
+validation follows; broader cleanup/crash/resource-failure acceptance remains open.
