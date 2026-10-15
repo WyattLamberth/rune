@@ -19,6 +19,7 @@ def main():
     parser.add_argument('--reference',type=Path,required=True)
     parser.add_argument('--output',type=Path,required=True)
     parser.add_argument('--allow-dirty',action='store_true')
+    parser.add_argument('--scenario',choices=['failure','backpressure','eof'],default='failure')
     args=parser.parse_args()
     sha=lambda path:hashlib.sha256(path.read_bytes()).hexdigest()
     reference=args.reference.resolve(strict=True)
@@ -38,7 +39,7 @@ def main():
         for kind,binary in [('runc',reference),('rune',native)]:
             output=Path(directory)/(kind+'.json')
             result=run_bounded([sys.executable,str(ROOT/'scripts/poststop-probe.py'),'--runtime',str(binary),
-                                '--kind',kind,'--results',str(output)],timeout=300)
+                                '--kind',kind,'--results',str(output),'--scenario',args.scenario],timeout=300)
             report['runtimes'][kind]={'exit_code':result.returncode,'results':json.loads(output.read_text()) if output.exists() else None}
     left=report['runtimes']['runc']['results'];right=report['runtimes']['rune']['results']
     if left and right:
@@ -47,11 +48,21 @@ def main():
             'failure-exit':'matching_reference_with_OCI_conflict' if left.get('delete_exit_code')==right.get('delete_exit_code')==1 else 'validation_gap',
             'remaining-hooks':'reference_spec_conflict' if not left.get('remaining_hook_invoked') and not right.get('remaining_hook_invoked') else 'validation_gap',
             'warning-contract':'reference_spec_conflict' if not left.get('oci_contract_satisfied') and not right.get('oci_contract_satisfied') else 'validation_gap'}
+    if args.scenario != 'failure' and left and right:
+        expected=1 if args.scenario=='backpressure' else 0
+        success=lambda value:(value.get('delete_exit_code')==expected and
+            value.get('within_three_seconds',False) and
+            not value.get('state_directory_retained',True) and
+            (args.scenario!='eof' or value.get('remaining_hook_invoked',False)))
+        report['comparisons']={args.scenario:'matching_assertions' if success(left) and success(right) else 'validation_gap',
+            'rune-observed-hook-cleanup':'matching_assertions' if right.get('observed_hooks_absent',False) else 'validation_gap',
+            'reference-observed-hook-cleanup':'matching_assertions' if left.get('observed_hooks_absent',False) else 'concurrency_validation_gap'}
+        report['scope']='Rootless hook delivery deadline/EOF subset; observed PIDs may include concurrent frontend callbacks, not exclusive direct-child attribution'
     changed=git(['rev-parse','HEAD'])!=head or git(['status','--porcelain','--untracked-files=all'])!=dirty
     if changed:report['rune_revision']=None;report['source_changed_during_validation']=True
     args.output.write_text(json.dumps(report,indent=2,sort_keys=True)+'\n')
     print(json.dumps({'rune_revision':report['rune_revision'],'comparisons':report['comparisons']}))
-    if changed or any(value['exit_code'] for value in report['runtimes'].values()):
+    if changed or any(value['exit_code'] for value in report['runtimes'].values()) or (args.scenario!='failure' and 'validation_gap' in report['comparisons'].values()):
         raise SystemExit('poststop investigation failed; aggregate gaps retained')
 
 

@@ -545,3 +545,45 @@ restore/retry and general comparison pass with no retained private resources.
 30 Rust and 14 Python tests plus static gates pass. See the dated poststop
 validation record. AI-generated review checked final history, superseded #17
 rationale, patch reproduction and limited claims; timeout/continuation remains open.
+
+## 2026-10-14 — Cover hook stdin delivery with deadlines (#38)
+
+Evidence: production run_hooks regression on the #35 base supplies 256 KiB of
+bounded annotations to a hook that never reads stdin and exits naturally after
+four seconds. Despite its one-second timeout, the original adapter fails the
+regression after four seconds. The wait deadline starts only after write_all.
+Pinned runc configs.Command.Run starts its timer alongside managed stdin copying
+and kills/waits the owned process on timeout. Independent source audit also
+finds a detached wait thread and bare-PID timeout signaling in rune; no PID-reuse
+attack has been claimed reproduced.
+
+Decision: serialize before spawn, reject negative/unrepresentable timeout before
+spawn, retain one Child owner, use safe nix fcntl on the existing stdin pipe for
+nonblocking writes, and apply one deadline across delivery and exit waiting.
+Close the writer after delivery so EOF consumers finish. On delivery/wait error,
+kill then wait for the direct child; preserve the initiating error and any
+kill/wait failures. BrokenPipe still permits successful early hooks, with actual
+exit status authoritative. No unsafe/dependency/lockfile or isolation changes.
+
+Alternatives: a detached stdin thread can remain blocked after deadline and
+complicates cleanup; a socket changes observable hook stdin type. Keeping the
+old wait thread can race reap with bare-PID signaling. Safe pipe polling keeps
+ownership local and uses a bounded 5 ms sleep; no performance claim follows.
+No timeout still permits an indefinitely running hook, as the contract does.
+Spawn/system uninterruptible waits and descendants remain explicit gaps. This
+change does not resolve OCI/reference poststop warning/continuation conflict.
+
+Development reproduction fails on the unchanged base and passes after the fix.
+The test invokes production dependency code and real processes, with a separate
+bounded worker and finite fixture lifetime; it is not policy simulation. Exact
+committed regressions, kernel comparisons and final evidence follow.
+
+Development kernel comparisons match the deadline and EOF assertions. The
+reference backpressure probe observes two hook processes and one still present
+at immediate observation, alongside concurrent frontend cleanup callbacks;
+rune observes one and it is absent after deletion. An initial fixture incorrectly
+called this observation direct-child reaping and failed the comparison. Corrected
+classification records a concurrency validation gap: no exclusive attribution
+to the direct command or proven reference child leak. Both finite hook processes
+terminate naturally within four seconds if not killed. Production adapter tests
+separately verify the owned child is reaped. No concurrency-parity claim follows.

@@ -4,14 +4,19 @@ Updated 2026-10-14; AI-generated engineering. Goal remains active.
 
 ## Current checkpoint — poststop contract investigation
 
-Primary checkout is on `codex/35-poststop-contract`. Implementation
-`46effbc48f66c11a6b4e1e3a855e7a6786622285` removes successfully destroyed state
-before poststop hooks. Exact two-hook kernel comparison, metadata fault/retry,
-general kernel comparison and Rust/static gates pass. Evidence:
-`docs/parity/validation/2026-10-14-poststop.md`. Both runtimes still stop at the
-first failed hook and return an error, contrary to OCI continuation requirements.
-Issue #35 / RMU-40 stays open. Hook timeout/backpressure is the next investigation.
-PR publication and final head checks follow. No retained test resources remain.
+Primary checkout is on `codex/38-hook-deadlines`, stacked on published PR #37
+(poststop ordering, final `956a82997b672be871575c49e57f23c22c6b81be`). PR #37 Rust
+CI passes; inspect Nix status before integration. #35 / RMU-40 remains open for
+OCI/reference warning and continuation conflict.
+
+Current #38 / RMU-41 fixes a reproduced one-second hook timeout that instead
+runs four seconds while stdin blocks. Safe nonblocking pipe writes and one Child
+owner cover delivery and wait, close stdin for EOF, and kill/reap while preserving
+cleanup errors. Six real-process production adapter cases pass; development
+rootless deadline/EOF comparisons match. Runc observes two hooks alongside a
+frontend callback; immediate process absence differs, classified as concurrency
+validation gap without direct-child attribution. Exact committed validation and
+publication follow. No retained runtime records/recovery locators remain.
 
 Prior #34 / RMU-39 is published in PR #36 at
 `ca9e25b357bd7fa4eb18808eb17d1a26c6190e99`; hosted Rust/Nix pass. Fully absent
@@ -124,12 +129,11 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Publish/review the poststop ordering increment, keeping #35's OCI/reference
-   conflict and timeout scope open.
-2. Reproduce hook stdin backpressure against configured timeout, then fix proven
-   deadline/reaping gaps without unsafe code or discarded cleanup errors.
-3. Continue #17 resource failures, interrupted acquisition and concurrency.
-4. Reconcile current main/other chat before integration of open #33/#36.
+1. Complete exact #38 deadline/EOF, poststop failure, metadata/general regression
+   validation, publish the increment and reconcile hosted CI.
+2. Continue #35 OCI/reference continuation conflict and #17 concurrent delete /
+   callback hook attribution, resource failures and interrupted acquisition.
+3. Reconcile main/other chat before integration of open #33/#36/#37.
 
 Full parity remains unproven and goal active. Inspect current Git/PR/Linear and
 private recovery locators; no retained test resource remains at this validation.
