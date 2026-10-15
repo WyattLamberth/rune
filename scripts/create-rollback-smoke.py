@@ -21,6 +21,24 @@ def main():
     runtime = args.runtime.resolve(strict=True)
     root = Path(tempfile.mkdtemp(prefix='rune-create-rollback-'))
     runtime, scope_trace = make_runtime(runtime, root / 'state')
+    # Inject only the requested output path, preserving invocation PID/FDs/stdio.
+    scoped = runtime
+    fault = root / 'pidfile-fault'
+    launcher = root / 'rune'
+    launcher.write_text('#!/usr/bin/python3\nimport os, pathlib, sys\n'
+        'args=sys.argv[1:]\n'
+        f'fault=pathlib.Path({str(fault)!r})\n'
+        'if "create" in args and fault.exists():\n'
+        ' target=fault.read_text()\n'
+        ' for i,arg in enumerate(args):\n'
+        '  if arg == "--pid-file":\n'
+        '   args[i+1]=target; break\n'
+        '  if arg.startswith("--pid-file="):\n'
+        '   args[i]="--pid-file="+target; break\n'
+        ' else: raise SystemExit("PID-file fault fixture did not find requested flag")\n'
+        f'os.execv({str(scoped)!r}, [{str(scoped)!r}]+args)\n')
+    launcher.chmod(0o700)
+    runtime = launcher
     base = ['podman', '--root', str(root / 'store'), '--runroot', str(root / 'run'),
             '--storage-driver', 'vfs', '--runtime', str(runtime),
             '--runtime-flag', f'root={root}/state']
@@ -46,6 +64,27 @@ def main():
             assert not any(p.name != '.rune-locks' for p in state.iterdir()), 'failed create retained runtime state'
             call(['rm', '--force', name])
             print(f'PASS failed create {case} and runtime state rollback', flush=True)
+        for case in ['directory', 'missing-parent']:
+            destination = root / ('invalid-pid-' + case)
+            if case == 'directory':
+                destination.mkdir()
+                (destination / 'retained').write_text('owned')
+            else:
+                destination = destination / 'pid'
+            name = f'rune-pidfile-{uuid.uuid4().hex}'
+            call(['create', '--name', name, '--network', 'none', IMAGE, 'sleep', '30'])
+            fault.write_text(str(destination))
+            try:
+                failed = run_bounded(base + ['start', name], timeout=45)
+                assert failed.returncode != 0, 'invalid PID-file destination unexpectedly started'
+            finally:
+                fault.unlink()
+            state = root / 'state'
+            assert not any(p.name != '.rune-locks' for p in state.iterdir()), 'PID publication failure retained native state'
+            if case == 'directory':
+                assert (destination / 'retained').read_text() == 'owned', 'PID publication damaged destination'
+            call(['rm', '--force', name])
+            print(f'PASS failed create PID-file {case} and runtime rollback', flush=True)
         assert not call(['ps', '--all', '--format', '{{.ID}}']), 'Podman containers remained'
     except Exception as error:
         errors.append(public_error(error))

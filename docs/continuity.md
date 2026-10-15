@@ -2,7 +2,23 @@
 
 Updated 2026-10-14; AI-generated engineering. Goal remains active.
 
-## Current checkpoint — combine cleanup and hook delivery (#40 / RMU-42)
+## Current checkpoint — PID publication (#31)
+
+Main 5c19cca includes the delivered independent-project documentation and CLI
+logging fixes (PRs #44/#46); both hosted Rust/Nix gates passed. This chat works
+in its isolated worktree on `codex/31-pidfile-rollback`; preserve the primary
+checkout's separate #42 hook-input work.
+
+The PID-file baseline comparison observes incorrect native success versus
+reference failure. Candidate code publishes atomically after readiness, rolls
+back the newly owned child, cleans failed exec sockets and preserves incomplete
+rollback ownership. Recovery records block lifecycle effects; automated recovery,
+full fault/crash/concurrency and rootful coverage remain open. See the #31
+development-log entry. Complete final-revision tests, differential/create/broad
+kernel checks and hosted CI before main delivery; do not close the broader
+issue from this subset.
+
+## Prior checkpoint — combine cleanup and hook delivery (#40 / RMU-42)
 
 Primary checkout is on `codex/40-cleanup-integration`, combining main
 `f8fc760029a051e80f7ae1f21884ca751e56d39d` with cleanup PRs #33/#36/#37/#39.

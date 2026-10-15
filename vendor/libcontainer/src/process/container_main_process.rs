@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::fs;
 use std::fs::File;
 use std::os::fd::AsRawFd;
 use std::path::PathBuf;
@@ -163,13 +162,6 @@ pub fn container_main_process(container_args: &ContainerArgs) -> Result<Pid> {
     // The intermediate process will send the init pid once it forks the init
     // process.  The intermediate process should exit after this point.
     let init_pid = intermediate_main_receiver.wait_for_intermediate_ready()?;
-
-    // if file to write the pid to is specified, write pid of the child
-    if let Some(pid_file) = &container_args.pid_file {
-        if let Err(err) = fs::write(pid_file, format!("{init_pid}")) {
-            tracing::warn!("failed to write pid to file: {err}");
-        }
-    }
 
     if matches!(container_args.container_type, ContainerType::InitContainer) {
         if let Some(hooks) = container_args.spec.hooks() {

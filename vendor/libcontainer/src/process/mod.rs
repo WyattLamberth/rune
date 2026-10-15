@@ -12,5 +12,7 @@ pub mod intel_rdt;
 pub mod memory_policy;
 mod message;
 mod node_set;
+pub(crate) mod pid_file;
+pub(crate) mod owned_process;
 #[cfg(feature = "libseccomp")]
 mod seccomp_listener;

@@ -8,6 +8,8 @@ sys.dont_write_bytecode = True
 from smoke_cleanup import finish_resources, run_bounded, public_error
 from smoke_scope import make_runtime, summary
 import tempfile
+import os
+import uuid
 
 IMAGE = "docker.io/library/alpine@sha256:1f3591b8a02ea153f41c5bba878ad477f63ab3d19349762cb77504db02a23e15"
 
@@ -29,7 +31,7 @@ def main():
             "--runtime-flag", f"root={root}/state"]
     cid = None
     errors = []
-    case_ids = ["direct-policy", "explicit-overrides", "process-file-policy", "process-file-conflict", "init-identity", "cleanup"]
+    case_ids = ["direct-policy", "explicit-overrides", "process-file-policy", "process-file-conflict", "pidfile-publication", "pidfile-failure", "init-identity", "cleanup"]
     cases = {case: "not_run" for case in case_ids}
     current = "direct-policy"
 
@@ -85,6 +87,40 @@ def main():
         direct(["--process", str(process), "--cwd", "/", cid], expected=1 if args.runtime_kind == "rune" else 0)
         cases[current] = "pass"
         print("PASS explicit overrides, process-file inheritance and conflicting-option rejection", flush=True)
+        current = "pidfile-publication"
+        for detached in [False, True]:
+            destination = root / ("detached.pid" if detached else "foreground.pid")
+            alias = root / ("detached.old" if detached else "foreground.old")
+            destination.write_text("original inode")
+            os.link(destination, alias)
+            direct((["--detach"] if detached else []) + ["--pid-file", str(destination), cid, "/bin/true"])
+            assert destination.read_text().isdigit(), "PID file does not contain one positive PID"
+            assert int(destination.read_text()) > 0, "PID file is invalid"
+            assert alias.read_text() == "original inode", "PID publication truncated the previous inode"
+        cases[current] = "pass"
+        current = "pidfile-failure"
+        for detached in [False, True]:
+            for failure in ["directory", "missing-parent"]:
+                destination = root / ("failure-" + uuid.uuid4().hex)
+                if failure == "directory":
+                    destination.mkdir()
+                    (destination / "retained").write_text("owned")
+                else:
+                    destination = destination / "pid"
+                before_pids = set(call(["top", cid, "hpid"]).splitlines()[1:])
+                before_records = {path.name for path in (root / "state" / cid).iterdir()}
+                result = run_bounded(base + ["unshare", str(runtime), "--root", str(root / "state"),
+                    "exec"] + (["--detach"] if detached else []) + ["--pid-file", str(destination),
+                    cid, "/bin/sleep", "30"], text=True, timeout=45)
+                assert result.returncode != 0, "PID-file failure was reported as successful exec"
+                after_pids = set(call(["top", cid, "hpid"]).splitlines()[1:])
+                assert before_pids and after_pids <= before_pids, "PID publication failure left a new container process"
+                if args.runtime_kind == "rune":
+                    assert {path.name for path in (root / "state" / cid).iterdir()} == before_records, "failed exec left temporary ownership/socket files"
+                if failure == "directory":
+                    assert (destination / "retained").read_text() == "owned", "failed publication damaged destination"
+        cases[current] = "pass"
+        print("PASS atomic PID publication and failed foreground/detached exec rollback", flush=True)
         after = json.loads(call(["inspect", cid]))[0]
         current = "init-identity"
         assert after["State"]["Pid"] == info["State"]["Pid"], "exec changed init identity"
