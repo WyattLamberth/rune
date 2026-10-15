@@ -5,8 +5,8 @@ Updated 2026-10-14; AI-generated engineering. Goal remains active.
 ## Current checkpoint — poststop contract investigation
 
 Primary checkout is on `codex/38-hook-deadlines`, stacked on published PR #37
-(poststop ordering, final `956a82997b672be871575c49e57f23c22c6b81be`). PR #37 Rust
-CI passes; inspect Nix status before integration. #35 / RMU-40 remains open for
+(poststop ordering, final `956a82997b672be871575c49e57f23c22c6b81be`). PR #37 hosted Rust/Nix
+CI passes. #35 / RMU-40 remains open for
 OCI/reference warning and continuation conflict.
 
 Current #38 / RMU-41 fixes a reproduced one-second hook timeout that instead
@@ -15,8 +15,10 @@ owner cover delivery and wait, close stdin for EOF, and kill/reap while preservi
 cleanup errors. Six real-process production adapter cases pass; development
 rootless deadline/EOF comparisons match. Runc observes two hooks alongside a
 frontend callback; immediate process absence differs, classified as concurrency
-validation gap without direct-child attribution. Exact committed validation and
-publication follow. No retained runtime records/recovery locators remain.
+validation gap without direct-child attribution. Exact implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb` passes
+31 Rust/14 Python tests, static gates, deadline/EOF/failure and general kernel
+comparisons; evidence is `docs/parity/validation/2026-10-14-hook-deadlines.md`.
+Final head validation and publication follow. No retained runtime records/recovery locators remain.
 
 Prior #34 / RMU-39 is published in PR #36 at
 `ca9e25b357bd7fa4eb18808eb17d1a26c6190e99`; hosted Rust/Nix pass. Fully absent

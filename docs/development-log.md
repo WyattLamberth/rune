@@ -587,3 +587,12 @@ classification records a concurrency validation gap: no exclusive attribution
 to the direct command or proven reference child leak. Both finite hook processes
 terminate naturally within four seconds if not killed. Production adapter tests
 separately verify the owned child is reaped. No concurrency-parity claim follows.
+
+Exact implementation `5a7a6aa88acdacdf7cafc561e01a187b4b2544eb` passes
+31 Rust tests (plus the explicitly invoked worker), 14 Python tests, static
+gates and dependency patch reproduction. Signed-reference rootless deadline,
+EOF, poststop failure ordering and general kernel comparisons pass their stated
+assertions. Reference callback attribution remains a concurrency validation gap;
+OCI continuation remains a conflict. See the dated hook-deadlines record.
+AI-generated review inspected the production child lifecycle, error propagation,
+no-unsafe boundary, regression limits, history and contemporaneous decision log.
