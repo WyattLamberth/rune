@@ -1,7 +1,7 @@
 # rune
 
-An experimental Linux OCI runtime written in Rust, following rmux's engineering
-principles. Code is disposable; engineering time is disposable. Correctness,
+An experimental Linux OCI runtime written in Rust. Code is disposable;
+engineering time is disposable. Correctness,
 isolation, usability and measured performance decide what stays.
 
 AI-generated implementation under WyattLamberth's product direction. No human
@@ -80,5 +80,4 @@ isolation/concurrency certification.
 
 [OCI support matrix](docs/oci-support.md) · [Architecture](docs/architecture.md) · [security boundary](SECURITY.md) ·
 [runc parity baseline and gaps](docs/parity/README.md) · [Development log](docs/development-log.md) ·
-[GitHub backlog](https://github.com/WyattLamberth/rune/issues) ·
-[Linear delivery](https://linear.app/rmux/project/rune-4971526b84f3)
+[GitHub backlog](https://github.com/WyattLamberth/rune/issues)

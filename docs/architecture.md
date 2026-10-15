@@ -48,7 +48,7 @@ evidence can justify replacing this adapter or reshaping the architecture.
 - Rootless Podman smoke tests with isolated storage, checking actual workload
   exits, SELinux labels, seccomp, cgroup limits, exec, TTY and lifecycle cleanup.
 
-Nix pins are inherited from rmux. x86_64-linux and aarch64-linux are declared;
+Nix inputs are pinned in `flake.lock`. x86_64-linux and aarch64-linux are declared;
 architecture declarations do not establish successful builds on both machines.
 
 NUMA policy validation runs on the create snapshot before container acquisition
