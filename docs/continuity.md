@@ -2,21 +2,34 @@
 
 Updated 2026-10-12; AI-generated engineering. Goal remains active.
 
-## Current increment — smoke cleanup evidence
+## Current increment — callback runtime-root binding
 
-GitHub #17 / RMU-33, branch `codex/17-smoke-cleanup-evidence`, stacked on PR #25.
-Corrected implementation `7a609bc99bae0da2c8be0d89a5d55b5cc98289e8` shares
-bounded anchored diagnostics, failure preservation and private recovery across
-all four suites. 29 Rust and 8 control/filesystem tests plus static gates pass.
-Exec/NUMA comparisons and failed-create kernel suite pass; broader Podman
-comparison retains one runc runtime record and fails. Native recovery reports
-stopped, forced deletion succeeds and all owned resources/locators are cleaned.
-Exact evidence: `docs/parity/validation/2026-10-13-cleanup-harness.md`.
-An earlier exact harness revision used shortened ps IDs; it is a harness defect,
-not runtime evidence. Finish final checks/publication, then trace delete request
-results under pinned Podman 5.8.7 source `c593b672bf3db1173aebea565ebf1a724ea196dc`.
-Its frontend can log removal errors and still return expected workload status and
-remove registry records; this source finding is not the full root cause.
+GitHub #17 / RMU-33, primary checkout branch `codex/17-native-cleanup-trace`,
+combines completed PR #26 bounds and PR #28 cleanup evidence. Implementation
+`26074b5492ed2f7ff28ce31c013bb36c8cad1623` binds private roots for conmon
+callbacks using execv, preserving PID/descriptors/stdio. Test-child deadline
+follow-up is `22232ce`. 29 Rust/14 fixture tests, static/label gates, all three
+reference kernel comparisons and failed-create cleanup pass. Both general cases
+observe one omitted-root delete and strict successful cleanup after binding.
+Evidence: `docs/parity/validation/2026-10-14-runtime-scope.md`. Finish final
+checks/publication, then continue native cleanup crash/concurrency acceptance.
+
+## Prior increment — cleanup diagnostics and output bounds
+
+PR #28 at `763740e8fd6bf024781af9c697d7f6b7591a1f28` passes hosted Rust/Nix and
+focused kernel checks; its earlier general comparison retains a runc record.
+Separate native recovery succeeds. PR #26 at
+`dd06f7dc5f5d33a448f2b9e622cb8499edba21a5` adds output caps/recursive JSON
+handling and passes hosted/local checks; broad earlier failures remain recorded.
+The histories are reconciled in this branch.
+
+## Parallel existing work
+
+The other active “Read Codex goal objective” chat is implementing #27 / RMU-36
+on branch `codex/27-nonregular-config` in its isolated worktree. Keep this chat
+on #17 and the primary checkout; do not modify its active worktree. Inspect its
+PR/current state before later integration. No cross-chat message authorization
+has been requested or assumed.
 
 ## Prior increment — bounded NUMA preflight
 
@@ -102,14 +115,14 @@ criteria are not completed by the alpha.
 
 ## Next work
 
-1. Finish final checks and publish/attach cleanup harness PR; update RMU-33.
-2. Add bounded native runtime request/result tracing for disposable Podman cases.
-   Explain retained OCI state before changing cleanup assertions or claiming a fix.
-3. Continue interrupted/resource-failure/concurrent cleanup acceptance under #17,
-   recognized-field audit #14 and full differential/conformance matrix #13.
-4. Review coherent train integration with exact delivered-revision validation;
-   broad cleanup acceptance remains unresolved.
+1. Publish/attach callback-scope increment after exact final-head checks.
+2. Continue native interrupted/resource-failure/concurrent cleanup acceptance
+   under #17; consistent fixture roots repair plumbing, not the full lifecycle.
+3. Reconcile #27 when its separate active chat finishes; continue recognized OCI
+   field audit #14 and full conformance/semantic matrix #13.
+4. Review coherent PR train integration with exact delivered-revision validation.
 
-PR train: #10, #15, #18, #19, #20, #21, #24, #25. Prior hosted Rust/Nix pass.
-The goal remains active and complete parity remains unproven. Check Git/PR/Linear
-and private recovery locators before continuing; do not repeat completed work.
+PR train includes #10, #15, #18, #19, #20, #21, #24, #25, #28 and #26.
+The goal remains active and full parity unproven. Private fixture launchers and
+trace inputs remain ignored; no retained resource locator remains at validation.
+Always check current Git/PR/Linear/recovery state before continuing.
