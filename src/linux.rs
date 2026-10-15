@@ -142,6 +142,26 @@ pub fn kill(root: &Path, args: &Kill) -> Result<()> {
 }
 pub fn delete(root: &Path, args: &Delete) -> Result<()> {
     let _lock = lock(root, &args.container_id)?;
+    match std::fs::symlink_metadata(root.join(&args.container_id)) {
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return match execute(
+                Status::Absent,
+                if args.force {
+                    Action::ForceDelete
+                } else {
+                    Action::Delete
+                },
+                |_| -> Result<()> { bail!("absent deletion attempted a backend effect") },
+            ) {
+                Ok(()) => Ok(()),
+                Err(CommandError::InvalidTransition) => bail!("container does not exist"),
+                Err(CommandError::Backend(error)) => Err(error),
+            };
+        }
+        Err(error) => return Err(error.into()),
+        Ok(metadata) if !metadata.is_dir() => bail!("container state directory must be real"),
+        Ok(_) => {}
+    }
     let mut c = load(root, &args.container_id)?;
     dispatch(
         &mut c,

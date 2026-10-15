@@ -216,3 +216,77 @@ fn numa_policy_errors_do_not_create_container_ownership_records() {
         );
     }
 }
+
+fn deadline_output(command: &mut Command) -> std::process::Output {
+    use std::process::Stdio;
+    use std::time::{Duration, Instant};
+    let mut child = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(2);
+    loop {
+        if child.try_wait().unwrap().is_some() {
+            return child.wait_with_output().unwrap();
+        }
+        if Instant::now() >= deadline {
+            child.kill().unwrap();
+            child.wait().unwrap();
+            panic!("owned CLI command exceeded deadline");
+        }
+        std::thread::sleep(Duration::from_millis(5));
+    }
+}
+
+#[test]
+fn forced_absence_is_idempotent_but_partial_or_nonregular_ownership_is_not() {
+    use std::os::unix::fs::symlink;
+    let root = tempfile::tempdir().unwrap();
+    for _ in 0..2 {
+        let output = deadline_output(
+            Command::new(env!("CARGO_BIN_EXE_rune"))
+                .arg("--root")
+                .arg(root.path())
+                .args(["delete", "--force", "absent"]),
+        );
+        assert!(output.status.success());
+        assert!(output.stdout.is_empty());
+        assert!(!root.path().join("absent").exists());
+    }
+    let output = deadline_output(
+        Command::new(env!("CARGO_BIN_EXE_rune"))
+            .arg("--root")
+            .arg(root.path())
+            .args(["delete", "absent"]),
+    );
+    assert!(!output.status.success());
+    for id in ["../outside", ".rune-locks", "a/b"] {
+        let output = deadline_output(
+            Command::new(env!("CARGO_BIN_EXE_rune"))
+                .arg("--root")
+                .arg(root.path())
+                .args(["delete", "--force", id]),
+        );
+        assert!(!output.status.success());
+    }
+    let partial = root.path().join("partial");
+    fs::create_dir(&partial).unwrap();
+    fs::write(partial.join("ownership"), b"retain").unwrap();
+    let file = root.path().join("file");
+    fs::write(&file, b"retain").unwrap();
+    symlink(&partial, root.path().join("link")).unwrap();
+    for id in ["partial", "file", "link"] {
+        let output = deadline_output(
+            Command::new(env!("CARGO_BIN_EXE_rune"))
+                .arg("--root")
+                .arg(root.path())
+                .args(["delete", "--force", id]),
+        );
+        assert!(!output.status.success());
+        assert!(output.stdout.is_empty());
+    }
+    assert_eq!(fs::read(partial.join("ownership")).unwrap(), b"retain");
+    assert_eq!(fs::read(file).unwrap(), b"retain");
+    assert!(root.path().join("link").is_symlink());
+}

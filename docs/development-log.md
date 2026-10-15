@@ -464,3 +464,40 @@ The request trace does not capture individual command exit results; overall
 workflow/state assertions remain the result evidence. Tighten test-child deadlines
 and kill/reap cleanup for the FIFO and PID/descriptor fixture regressions before
 final publication; this changes the test harness only.
+
+## 2026-10-14 — Make fully absent forced deletion a production no-op (#34)
+
+Evidence: reviewed core/adapter history from the alpha and exec snapshots,
+pinned runc delete.go, #17 and a live rootless metadata-fault fixture. Missing,
+malformed and FIFO cleanup metadata each reject forced deletion, preserve state
+bytes and keep the owned init running. Restoring metadata permits deletion, but
+subsequent frontend cleanup encountered an already-absent state directory and
+rune returned an error. Pinned runc treats complete absence as forced success.
+
+Decision: add internal Absent status/Noop effect to deterministic production
+policy. No-op dispatch invokes no adapter and cannot signal/delete resources.
+The Linux adapter observes directory absence under the validated-ID lock; only
+ENOENT is absence. Other errors, partial/corrupt records, files and symlinked
+state directories remain errors. Force absent succeeds without output; ordinary
+absent deletion still fails. Update seeded policy replay with absence and retain
+seed/step/bounded trace, explicitly distinct from kernel tests.
+
+Alternatives: treating missing state.json as full absence discards unknown
+resource ownership. Runc removes partial directories in that situation; rune
+keeps them pending the acquisition ledger, an explicit compatibility difference.
+Implementing the no-op only in an untested adapter branch would bypass production
+policy/replay. A new effect makes absence semantics testable without adding OS
+dependencies to the core. No unsafe/dependencies/lockfile changes.
+
+Development: 30 Rust tests and warnings-denied Clippy pass, including deadline
+protected absent/repeated force/ordinary/invalid-ID/partial/file/symlink cases.
+Standalone signed-reference comparison matches complete absence and records the
+partial-ownership difference. Live private kernel faults, restore/retry and
+frontend cleanup now all pass. The earlier development cleanup failure is not
+erased; its retained private resources were subsequently recovered.
+
+Source audit also opened #35 for poststop warning/continuation/deletion-order
+semantics. Pinned OCI requires warning and remaining-hook continuation, while
+pinned runc's hook list returns at first failure and rune retains state before
+hook completion. Kernel confirmation and a compliant compatibility design remain
+open; this increment does not silently choose or claim both contracts.
