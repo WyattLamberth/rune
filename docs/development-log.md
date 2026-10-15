@@ -455,3 +455,12 @@ cleanup for both runtimes. The second records two missing-root deletes for runc
 and one for rune; each is bound to its private root before native execution.
 Four fixture contract tests plus ten existing cleanup tests pass. Exact committed
 validation follows; broader cleanup/crash/resource-failure acceptance remains open.
+
+Exact implementation `26074b5492ed2f7ff28ce31c013bb36c8cad1623` passes 29 Rust
+tests, 14 fixture/cleanup tests, static gates, label tests, all three signed
+differential suites and failed-create cleanup. Both general runs record one
+delete without its root argument, bind it correctly, and leave no runtime state.
+The request trace does not capture individual command exit results; overall
+workflow/state assertions remain the result evidence. Tighten test-child deadlines
+and kill/reap cleanup for the FIFO and PID/descriptor fixture regressions before
+final publication; this changes the test harness only.

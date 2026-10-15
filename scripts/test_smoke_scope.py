@@ -6,6 +6,7 @@ import io
 import os
 import subprocess
 import json
+import sys
 import unittest
 from unittest.mock import patch
 
@@ -44,11 +45,19 @@ class ScopeTests(unittest.TestCase):
                                      (root / 'state', root / 'fifo')]:
                 if trace.name == 'fifo':
                     os.mkfifo(trace)
-                with patch('smoke_scope.os.execv') as execute, contextlib.redirect_stderr(io.StringIO()):
-                    with self.assertRaises(SystemExit) as caught:
-                        invoke(Path('/synthetic-native'), expected, trace, ['delete', 'private-id'])
-                    self.assertEqual(caught.exception.code, 125)
-                execute.assert_not_called()
+                if trace.name == 'fifo':
+                    code = ('import pathlib,sys;from smoke_scope import invoke;'
+                            'invoke(pathlib.Path("/synthetic-native"),pathlib.Path(sys.argv[1]),'
+                            'pathlib.Path(sys.argv[2]),["delete","private-id"])')
+                    result = subprocess.run([sys.executable, '-c', code, str(expected), str(trace)],
+                        cwd=Path(__file__).parent, capture_output=True, timeout=2)
+                    self.assertEqual(result.returncode, 125)
+                else:
+                    with patch('smoke_scope.os.execv') as execute, contextlib.redirect_stderr(io.StringIO()):
+                        with self.assertRaises(SystemExit) as caught:
+                            invoke(Path('/synthetic-native'), expected, trace, ['delete', 'private-id'])
+                        self.assertEqual(caught.exception.code, 125)
+                    execute.assert_not_called()
             self.assertEqual(summary(root / 'trace')['expired_scopes'], {'delete': 1})
 
     def test_native_fixture_preserves_pid_and_inherited_descriptor(self):
@@ -64,7 +73,12 @@ class ScopeTests(unittest.TestCase):
                 descriptor.write(b'synthetic-marker'); descriptor.seek(0)
                 process = subprocess.Popen([str(launcher), 'state', str(descriptor.fileno())],
                     pass_fds=(descriptor.fileno(),), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                output, _ = process.communicate(timeout=5)
+                try:
+                    output, _ = process.communicate(timeout=5)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+                    process.wait(timeout=5)
             value = json.loads(output)
             self.assertTrue(process.returncode == 0 and value['pid'] == process.pid and value['inherited'],
                             'native fixture changed process or descriptor identity')
